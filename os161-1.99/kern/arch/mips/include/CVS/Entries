@@ -1,0 +1,10 @@
+/current.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/elf.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/specialreg.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/spinlock.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/thread.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/tlb.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/trapframe.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/types.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+/vm.h/1.1.1.1/Thu Sep 12 18:51:36 2013//
+D/kern////

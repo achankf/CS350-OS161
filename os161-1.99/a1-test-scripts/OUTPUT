@@ -1,0 +1,170 @@
+./run-batch
+Starting ./run-by-config Version Created Fall 13: v1.0 at: Sun Oct 13 01:16:53 EDT 2013
+######################################################################
+./run-on-configs uw1.cmds sys161-512K-1P.conf sys161-512K-4P.conf sys161-512K-8P.conf
+========================== Using parameters "uw1;q" =================================
+Started runs at: Sun Oct 13 01:16:53 EDT 2013
+sys161 -c sys161-512K-1P.conf kernel "uw1;q"
+
+
+Put-your-group-name-here's system version 0 (ASST1 #23)
+
+304k physical memory available
+
+cpu0: MIPS r3000
+OS/161 kernel: uw1
+Starting uwlocktest1...
+value of test_value = 0 should be 0
+TEST SUCCEEDED
+cleanitems: Destroying sems and locks
+uwlocktest1 done.
+Operation took 23.100915040 seconds
+OS/161 kernel: q
+Shutting down.
+The system is halted.
+sys161: 581971608 cycles (581971608 run, 0 global-idle)
+sys161:   cpu0: 581971608 kern, 0 user, 0 idle)
+sys161: 232481 irqs 0 exns 0r/0w disk 0r/755w console 0r/0w/1m emufs 0r/0w net
+sys161: Elapsed real time: 24.992038 seconds (23.2863 mhz)
+sys161: Elapsed virtual time: 23.278864320 seconds (25 mhz)
+
+sys161 -c sys161-512K-4P.conf kernel "uw1;q"
+
+
+Put-your-group-name-here's system version 0 (ASST1 #23)
+
+304k physical memory available
+
+cpu0: MIPS r3000
+cpu1: MIPS r3000
+cpu2: MIPS r3000
+cpu3: MIPS r3000
+OS/161 kernel: uw1
+Starting uwlocktest1...
+value of test_value = 0 should be 0
+TEST SUCCEEDED
+cleanitems: Destroying sems and locks
+uwlocktest1 done.
+Operation took 9.729273120 seconds
+OS/161 kernel: q
+Shutting down.
+cpu0: offline.
+The system is halted.
+cpu3: offline.
+cpu2: offline.
+sys161: 247896467 cycles (247896467 run, 0 global-idle)
+sys161:   cpu0: 182883324 kern, 0 user, 65013143 idle)
+sys161:   cpu1: 169220289 kern, 0 user, 78676178 idle)
+sys161:   cpu2: 149721364 kern, 0 user, 98175103 idle)
+sys161:   cpu3: 121093289 kern, 0 user, 126803178 idle)
+sys161: 291056 irqs 0 exns 0r/0w disk 0r/850w console 0r/0w/1m emufs 0r/0w net
+sys161: Elapsed real time: 26.569778 seconds (9.33002 mhz)
+sys161: Elapsed virtual time: 9.915858680 seconds (25 mhz)
+
+sys161 -c sys161-512K-8P.conf kernel "uw1;q"
+
+
+Put-your-group-name-here's system version 0 (ASST1 #23)
+
+304k physical memory available
+
+cpu0: MIPS r3000
+cpu1: MIPS r3000
+cpu2: MIPS r3000
+cpu3: MIPS r3000
+cpu4: MIPS r3000
+cpu5: MIPS r3000
+cpu6: MIPS r3000
+cpu7: MIPS r3000
+OS/161 kernel: uw1
+Starting uwlocktest1...
+value of test_value = 0 should be 0
+TEST SUCCEEDED
+cleanitems: Destroying sems and locks
+uwlocktest1 done.
+Operation took 8.744632760 seconds
+OS/161 kernel: q
+Shutting down.
+cpu0: offline.
+cpu4: offline.
+cpu5: offline.
+The system is halted.
+cpu1: offline.
+cpu6: offline.
+cpu7: offline.
+cpu2: offline.
+sys161: 223728008 cycles (223728008 run, 0 global-idle)
+sys161:   cpu0: 131052479 kern, 0 user, 92675529 idle)
+sys161:   cpu1: 113551800 kern, 0 user, 110176208 idle)
+sys161:   cpu2: 92487907 kern, 0 user, 131240101 idle)
+sys161:   cpu3: 88057452 kern, 0 user, 135670556 idle)
+sys161:   cpu4: 85329046 kern, 0 user, 138398962 idle)
+sys161:   cpu5: 86064538 kern, 0 user, 137663470 idle)
+sys161:   cpu6: 85273750 kern, 0 user, 138454258 idle)
+sys161:   cpu7: 277680 kern, 0 user, 223450328 idle)
+sys161: 330946 irqs 0 exns 0r/0w disk 0r/978w console 0r/0w/1m emufs 0r/0w net
+sys161: Elapsed real time: 33.652820 seconds (6.64812 mhz)
+sys161: Elapsed virtual time: 8.949120320 seconds (25 mhz)
+
+Ended runs at: Sun Oct 13 01:18:18 EDT 2013
+
+========================== Using parameters "uw1;q" =================================
+Started runs at: Sun Oct 13 01:18:18 EDT 2013
+sys161 -c sys161-512K-1P.conf kernel "uw1;q"
+
+
+Put-your-group-name-here's system version 0 (ASST1 #23)
+
+304k physical memory available
+
+cpu0: MIPS r3000
+OS/161 kernel: uw1
+Starting uwlocktest1...
+value of test_value = 0 should be 0
+TEST SUCCEEDED
+cleanitems: Destroying sems and locks
+uwlocktest1 done.
+Operation took 23.192114800 seconds
+OS/161 kernel: q
+Shutting down.
+The system is halted.
+sys161: 584276184 cycles (584276184 run, 0 global-idle)
+sys161:   cpu0: 584276184 kern, 0 user, 0 idle)
+sys161: 233393 irqs 0 exns 0r/0w disk 0r/755w console 0r/0w/1m emufs 0r/0w net
+sys161: Elapsed real time: 24.962252 seconds (23.4064 mhz)
+sys161: Elapsed virtual time: 23.371047360 seconds (25 mhz)
+
+sys161 -c sys161-512K-4P.conf kernel "uw1;q"
+
+
+Put-your-group-name-here's system version 0 (ASST1 #23)
+
+304k physical memory available
+
+cpu0: MIPS r3000
+cpu1: MIPS r3000
+cpu2: MIPS r3000
+cpu3: MIPS r3000
+OS/161 kernel: uw1
+Starting uwlocktest1...
+value of test_value = 0 should be 0
+TEST SUCCEEDED
+cleanitems: Destroying sems and locks
+uwlocktest1 done.
+Operation took 9.698911680 seconds
+OS/161 kernel: q
+Shutting down.
+cpu0: offline.
+cpu3: offline.
+The system is halted.
+cpu2: offline.
+sys161: 247157408 cycles (247157408 run, 0 global-idle)
+sys161:   cpu0: 181712719 kern, 0 user, 65444689 idle)
+sys161:   cpu1: 171141907 kern, 0 user, 76015501 idle)
+sys161:   cpu2: 151506455 kern, 0 user, 95650953 idle)
+sys161:   cpu3: 117448060 kern, 0 user, 129709348 idle)
+sys161: 290481 irqs 0 exns 0r/0w disk 0r/850w console 0r/0w/1m emufs 0r/0w net
+sys161: Elapsed real time: 27.068823 seconds (9.1307 mhz)
+sys161: Elapsed virtual time: 9.886296320 seconds (25 mhz)
+
+sys161 -c sys161-512K-8P.conf kernel "uw1;q"

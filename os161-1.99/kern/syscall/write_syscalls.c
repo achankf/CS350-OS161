@@ -36,7 +36,7 @@
  * Example system call: get the time of day.
  */
 
-int sys_write(int fd, const void *user_buffer, size_t numBytes)
+int sys_write(int fd, userptr_t user_buffer, size_t numBytes)
 {
 	fd = fd + 1;
 	kprintf((char *)user_buffer);

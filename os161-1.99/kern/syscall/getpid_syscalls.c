@@ -1,6 +1,9 @@
 #include <types.h>
+#include <proc.h>
+#include <current.h>
 #include <syscall.h>
 
-int sys_getpid(void){
-	return -1;
+pid_t sys_getpid(void){
+	KASSERT(curproc != NULL);
+	return curproc->pid;
 }

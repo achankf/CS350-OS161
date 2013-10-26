@@ -73,6 +73,13 @@ proc_create(const char *name)
 	if (proc == NULL) {
 		return NULL;
 	}
+
+	proc->pid = idgen_get_next(pidgen);
+	if (proc->pid >= PTABLE_SIZE){
+		kfree(proc);
+		return NULL;
+	}
+
 	proc->waitfor_child = cv_create("");
 	if (proc->waitfor_child == NULL){
 		kfree(proc);
@@ -109,9 +116,7 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
-	proc->pid = idgen_get_next(pidgen);
-	proctable[proc->pid] = proc;
-return proc;
+	return proc;
 }
 
 /*

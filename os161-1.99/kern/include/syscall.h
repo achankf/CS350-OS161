@@ -59,4 +59,7 @@ int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 int sys__exit(int code);
 int sys_write(int fd, const void *buf, size_t nbytes);
+int sys_fork(void);
+int sys_getpid(void);
+int sys_waitpid(pid_t pid, int *status, int option);
 #endif /* _SYSCALL_H_ */

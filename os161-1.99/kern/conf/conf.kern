@@ -282,6 +282,7 @@ file      lib/kgets.c
 file      lib/kprintf.c
 file      lib/misc.c
 file      lib/uio.c
+file			lib/id_generator.c
 # UW Mod
 file      lib/queue.c
 
@@ -436,6 +437,7 @@ file		test/tt3.c
 file		test/synchtest.c
 file		test/malloctest.c
 file		test/fstest.c
+file		test/id_gen_test.c
 optfile net	test/nettest.c
 # UW Mod
 file    test/uw-tests.c

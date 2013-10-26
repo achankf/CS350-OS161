@@ -550,6 +550,7 @@ static struct {
 	{ "sp2",	catmouse },
 #endif /* UW */
 #endif
+	{ "idgen",	id_gen_test },
 
 	/* stats */
 	{ "kh",         cmd_kheapstats },

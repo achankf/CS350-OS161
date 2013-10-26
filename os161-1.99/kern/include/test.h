@@ -43,6 +43,9 @@ int whalemating(int, char **);
 int catmouse(int, char **);
 #endif
 
+// id generator test
+int id_gen_test(int, char **);
+
 /*
  * Test code.
  */

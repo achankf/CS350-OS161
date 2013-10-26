@@ -50,12 +50,19 @@
 #include <array.h>
 #include <id_generator.h>
 
+#define PTABLE_SIZE 256
+
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
+
+struct processinfo{
+	struct proc *process;
+};
+
 struct id_generator *pidgen;
-struct array *processtable;
+struct processinfo processtable[PTABLE_SIZE];
 
 /*
  * Create a proc structure.
@@ -86,6 +93,9 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	proc->pid = idgen_get_next(pidgen);
+
+	struct processinfo *procinfo = &processtable[proc->pid];
+	procinfo->process = proc;
 
 	return proc;
 }

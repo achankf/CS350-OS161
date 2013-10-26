@@ -47,11 +47,13 @@
 #include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
+#include <id_generator.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
+struct id_generator *pidgen;
 
 /*
  * Create a proc structure.
@@ -80,6 +82,8 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
+
+	proc->pid = idgen_get_next(pidgen);
 
 	return proc;
 }
@@ -148,6 +152,7 @@ proc_destroy(struct proc *proc)
 void
 proc_bootstrap(void)
 {
+	pidgen = idgen_create(1);
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");

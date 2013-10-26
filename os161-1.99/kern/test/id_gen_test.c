@@ -4,27 +4,17 @@
 #include <test.h>
 #include <thread.h>
 
-struct temp{
-	struct spinlock *testspinlock;
-	struct id_generator *idgen;
-};
-
 struct semaphore *sem_numthread;
-struct temp t;
+struct id_generator *idgen;
 
 static void test_generator(void *not_used, unsigned long threadid){
 
 	(void) not_used;
 
-	KASSERT(t.idgen != NULL);
-	KASSERT(t.testspinlock != NULL);
+	KASSERT(idgen != NULL);
 
-	uint32_t temp;
 	for (int i = 0; i < 100; i++){
-		spinlock_acquire(t.testspinlock);
-			idgen_get_next(t.idgen,t.testspinlock,&temp);
-		spinlock_release(t.testspinlock);
-		kprintf("%lu %d\n", threadid, temp);
+		kprintf("%lu %d\n", threadid, idgen_get_next(idgen));
 	}
 	V(sem_numthread);
 }
@@ -33,16 +23,13 @@ static void test_generator2(void *not_used, unsigned long threadid){
 
 	(void) not_used;
 
-	KASSERT(t.idgen != NULL);
-	KASSERT(t.testspinlock != NULL);
+	KASSERT(idgen != NULL);
 
-	uint32_t temp;
+	int32_t temp;
 	for (int i = 0; i < 100; i++){
-		spinlock_acquire(t.testspinlock);
-			idgen_get_next(t.idgen,t.testspinlock,&temp);
-			idgen_put_back(t.idgen,t.testspinlock,temp);
-		spinlock_release(t.testspinlock);
+		temp = idgen_get_next(idgen);
 		kprintf("%lu %d THEN PUT BACK\n", threadid, temp);
+		idgen_put_back(idgen,temp);
 	}
 	V(sem_numthread);
 }
@@ -51,11 +38,9 @@ int id_gen_test(int nargs, char **args){
 	sem_numthread = sem_create("sem_testidgen",0);
 	struct spinlock splock;
 	spinlock_init(&splock);
-	t.testspinlock = &splock;
-	t.idgen = idgen_create(0);
+	idgen = idgen_create(0);
 
-	KASSERT(t.idgen != NULL);
-	KASSERT(t.testspinlock != NULL);
+	KASSERT(idgen != NULL);
 
 	(void)nargs;
 	(void)args;
@@ -64,12 +49,12 @@ int id_gen_test(int nargs, char **args){
 
 	int i = 0;
 	for (; i < NUMTHREAD; i++){
-		kprintf ("MAKING THREAD %p %d\n", t.idgen, i);
+		kprintf ("MAKING THREAD %d\n", i);
 		thread_fork("id_gen_test", NULL, test_generator, NULL, i);
 	}
 
 	for (int j = 0; j < NUMTHREAD; j++,i++){
-		kprintf ("MAKING THREAD %p %d\n", t.idgen, i);
+		kprintf ("MAKING THREAD %d\n", i);
 		thread_fork("id_gen_test", NULL, test_generator2, NULL, i);
 	}
 
@@ -77,8 +62,7 @@ int id_gen_test(int nargs, char **args){
 		P(sem_numthread);
 	}
 
-	spinlock_cleanup(t.testspinlock);
-	idgen_destroy(t.idgen);
+	idgen_destroy(idgen);
 	sem_destroy(sem_numthread);
 	return 0;
 }

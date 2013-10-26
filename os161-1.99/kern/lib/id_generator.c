@@ -16,12 +16,12 @@ struct id_generator *idgen_create(uint32_t start){
 	return idgen;
 }
 
-void idgen_get_next(struct id_generator *idgen, struct lock *lock, uint32_t *ret){
+void idgen_get_next(struct id_generator *idgen, struct spinlock *spinlock, uint32_t *ret){
 	KASSERT(idgen != NULL);
-	KASSERT(lock != NULL);
+	KASSERT(spinlock != NULL);
 	KASSERT(ret != NULL);
 	KASSERT(idgen->not_used != NULL);
-	KASSERT(lock_do_i_hold(lock));
+	KASSERT(spinlock_do_i_hold(spinlock));
 	if (!q_empty(idgen->not_used)){
 		*ret = (uint32_t)q_remhead(idgen->not_used);
 	} else {
@@ -30,20 +30,13 @@ void idgen_get_next(struct id_generator *idgen, struct lock *lock, uint32_t *ret
 	}
 }
 
-int idgen_put_back(struct id_generator *idgen, struct lock *lock, uint32_t val){
+int idgen_put_back(struct id_generator *idgen, struct spinlock *spinlock, uint32_t val){
 	KASSERT(idgen != NULL);
-	KASSERT(lock != NULL);
+	KASSERT(spinlock != NULL);
 	KASSERT(idgen->not_used != NULL);
-	KASSERT(lock_do_i_hold(lock));
+	KASSERT(spinlock_do_i_hold(spinlock));
 
 	return q_addtail(idgen->not_used, (void*) val);
-}
-
-int idgen_recycle(struct id_generator *idgen, struct lock *lock){
-	(void) idgen;
-	(void) lock;
-	return 0;
-	// nothing for now
 }
 
 void idgen_destroy(struct id_generator *idgen){

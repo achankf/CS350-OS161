@@ -5,7 +5,7 @@
 #include <thread.h>
 
 struct temp{
-	struct lock *testlock;
+	struct spinlock *testspinlock;
 	struct id_generator *idgen;
 };
 
@@ -17,13 +17,13 @@ static void test_generator(void *not_used, unsigned long threadid){
 	(void) not_used;
 
 	KASSERT(t.idgen != NULL);
-	KASSERT(t.testlock != NULL);
+	KASSERT(t.testspinlock != NULL);
 
 	uint32_t temp;
 	for (int i = 0; i < 100; i++){
-		lock_acquire(t.testlock);
-			idgen_get_next(t.idgen,t.testlock,&temp);
-		lock_release(t.testlock);
+		spinlock_acquire(t.testspinlock);
+			idgen_get_next(t.idgen,t.testspinlock,&temp);
+		spinlock_release(t.testspinlock);
 		kprintf("%lu %d\n", threadid, temp);
 	}
 	V(sem_numthread);
@@ -34,14 +34,14 @@ static void test_generator2(void *not_used, unsigned long threadid){
 	(void) not_used;
 
 	KASSERT(t.idgen != NULL);
-	KASSERT(t.testlock != NULL);
+	KASSERT(t.testspinlock != NULL);
 
 	uint32_t temp;
 	for (int i = 0; i < 100; i++){
-		lock_acquire(t.testlock);
-			idgen_get_next(t.idgen,t.testlock,&temp);
-			idgen_put_back(t.idgen,t.testlock,temp);
-		lock_release(t.testlock);
+		spinlock_acquire(t.testspinlock);
+			idgen_get_next(t.idgen,t.testspinlock,&temp);
+			idgen_put_back(t.idgen,t.testspinlock,temp);
+		spinlock_release(t.testspinlock);
 		kprintf("%lu %d THEN PUT BACK\n", threadid, temp);
 	}
 	V(sem_numthread);
@@ -49,11 +49,13 @@ static void test_generator2(void *not_used, unsigned long threadid){
 
 int id_gen_test(int nargs, char **args){
 	sem_numthread = sem_create("sem_testidgen",0);
-	t.testlock = lock_create("id_gen_testlock");
+	struct spinlock splock;
+	spinlock_init(&splock);
+	t.testspinlock = &splock;
 	t.idgen = idgen_create(0);
 
 	KASSERT(t.idgen != NULL);
-	KASSERT(t.testlock != NULL);
+	KASSERT(t.testspinlock != NULL);
 
 	(void)nargs;
 	(void)args;
@@ -75,7 +77,7 @@ int id_gen_test(int nargs, char **args){
 		P(sem_numthread);
 	}
 
-	lock_destroy(t.testlock);
+	spinlock_cleanup(t.testspinlock);
 	idgen_destroy(t.idgen);
 	sem_destroy(sem_numthread);
 	return 0;

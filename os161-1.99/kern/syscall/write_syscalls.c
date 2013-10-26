@@ -38,6 +38,7 @@
 
 int sys_write(int fd, userptr_t user_buffer, size_t numBytes)
 {
+	//panic("I dont know how to handle this!");
 	fd = fd + 1;
 	kprintf((char *)user_buffer);
 	return numBytes;

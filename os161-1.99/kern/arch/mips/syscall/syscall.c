@@ -169,5 +169,8 @@ syscall(struct trapframe *tf)
 void
 enter_forked_process(struct trapframe *tf)
 {
-	(void)tf;
+  // all elements in struct trapframe are integral values
+  // thus, the following will do a deep copy
+  struct trapframe newp_tf = *tf;
+  (void)newp_tf;
 }

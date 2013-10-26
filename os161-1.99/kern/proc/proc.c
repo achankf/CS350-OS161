@@ -47,6 +47,7 @@
 #include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
+#include <array.h>
 #include <id_generator.h>
 
 /*
@@ -54,6 +55,7 @@
  */
 struct proc *kproc;
 struct id_generator *pidgen;
+struct array *processtable;
 
 /*
  * Create a proc structure.

@@ -39,6 +39,8 @@
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
 #include <id_generator.h>
+#include <queue.h>
+#include <synch.h>
 
 struct addrspace;
 struct vnode;
@@ -59,6 +61,10 @@ struct proc {
 
 	/* add more material here as needed */
 	pid_t pid;
+	pid_t parent;
+	struct queue *zombie_children;
+	struct cv *waitfor_child;
+	struct lock *waitlock;
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
@@ -85,5 +91,11 @@ struct addrspace *curproc_getas(void);
 /* Change the address space of the current process, and return the old one. */
 struct addrspace *curproc_setas(struct addrspace *);
 
+bool proc_exists(pid_t pid);
+pid_t proc_get_parent(pid_t pid);
 
+/*
+ * DESTROY the process and unlink pid from the proctable
+ */
+int proctable_unlink(pid_t pid);
 #endif /* _PROC_H_ */

@@ -57,12 +57,8 @@
  */
 struct proc *kproc;
 
-struct processinfo{
-	struct proc *process;
-};
-
 struct id_generator *pidgen;
-struct processinfo processtable[PTABLE_SIZE];
+struct proc *proctable[PTABLE_SIZE];
 
 /*
  * Create a proc structure.
@@ -77,8 +73,29 @@ proc_create(const char *name)
 	if (proc == NULL) {
 		return NULL;
 	}
+	proc->waitfor_child = cv_create("");
+	if (proc->waitfor_child == NULL){
+		kfree(proc);
+		return NULL;
+	}
+	proc->zombie_children = q_create(10);
+	if (proc->zombie_children == NULL){
+		cv_destroy(proc->waitfor_child);
+		kfree(proc);
+		return NULL;
+	}
 	proc->p_name = kstrdup(name);
 	if (proc->p_name == NULL) {
+		q_destroy(proc->zombie_children);
+		cv_destroy(proc->waitfor_child);
+		kfree(proc);
+		return NULL;
+	}
+	proc->waitlock = lock_create("");
+	if (proc->waitlock == NULL){
+		q_destroy(proc->zombie_children);
+		cv_destroy(proc->waitfor_child);
+		kfree(proc->p_name);
 		kfree(proc);
 		return NULL;
 	}
@@ -93,11 +110,8 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	proc->pid = idgen_get_next(pidgen);
-
-	struct processinfo *procinfo = &processtable[proc->pid];
-	procinfo->process = proc;
-
-	return proc;
+	proctable[proc->pid] = proc;
+return proc;
 }
 
 /*
@@ -154,6 +168,9 @@ proc_destroy(struct proc *proc)
 	threadarray_cleanup(&proc->p_threads);
 	spinlock_cleanup(&proc->p_lock);
 
+	q_destroy(proc->zombie_children);
+	cv_destroy(proc->waitfor_child);
+	lock_destroy(proc->waitlock);
 	kfree(proc->p_name);
 	kfree(proc);
 }
@@ -165,6 +182,7 @@ void
 proc_bootstrap(void)
 {
 	pidgen = idgen_create(1);
+	bzero(proctable, sizeof(struct proc*) * PTABLE_SIZE);
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
@@ -296,4 +314,31 @@ curproc_setas(struct addrspace *newas)
 	proc->p_addrspace = newas;
 	spinlock_release(&proc->p_lock);
 	return oldas;
+}
+
+inline static bool
+proc_within_bound(pid_t pid){
+	return pid >= 0 && pid < PTABLE_SIZE;
+}
+
+bool
+proc_exists(pid_t pid){
+	return proc_within_bound(pid) && proctable[pid] != NULL;
+}
+
+pid_t
+proc_get_parent(pid_t pid){
+	KASSERT(proc_exists(pid));
+	return proctable[pid]->parent;
+}
+
+int proctable_unlink(pid_t pid){
+	KASSERT(proc_exists(pid));
+	lock_acquire(curproc->waitlock);
+		proc_destroy(proctable[pid]);
+		proctable[pid] = NULL;
+	lock_release(curproc->waitlock);
+
+	// recover the pid to become available for future use
+	return idgen_put_back(pidgen, pid);
 }

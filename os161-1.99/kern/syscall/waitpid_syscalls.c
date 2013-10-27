@@ -40,5 +40,5 @@ FOUND:
 
 	*status = pid;
 
-	return 0; // return pid in syscall.c
+	return 0;
 }

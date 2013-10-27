@@ -91,11 +91,23 @@ struct addrspace *curproc_getas(void);
 /* Change the address space of the current process, and return the old one. */
 struct addrspace *curproc_setas(struct addrspace *);
 
+//--------------------------
+
+// get the process reference by pid
+struct proc *proc_getby_pid(pid_t pid);
+
+// check whether the pid exists
 bool proc_exists(pid_t pid);
+
+// get the parent of the given PID
 pid_t proc_get_parent(pid_t pid);
 
-/*
- * DESTROY the process and unlink pid from the proctable
- */
+// DESTROY the process and unlink pid from the proctable
 int proctable_unlink(pid_t pid);
+
+/*
+ * Wait up parent process' CV and ask the parent to do clean up on the child.
+ * SHOULD ONLY BE CALLED WHEN A PROCESS EXITS
+ */
+int cleanup_my_mess(pid_t pid);
 #endif /* _PROC_H_ */

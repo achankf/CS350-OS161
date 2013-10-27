@@ -116,6 +116,8 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
+	proctable[proc->pid] = proc;
+
 	return proc;
 }
 
@@ -346,4 +348,25 @@ int proctable_unlink(pid_t pid){
 
 	// recover the pid to become available for future use
 	return idgen_put_back(pidgen, pid);
+}
+
+int cleanup_my_mess(pid_t pid){
+	int retval = 0;
+	lock_acquire(curproc->waitlock);
+		struct proc *temp = proctable[proc_get_parent(pid)];
+
+		if (proc_get_parent(pid) == 1){
+			proctable_unlink(pid);
+		} else {
+			// add cuproc's PID as a zombie, then get killed by the parent
+			retval = q_addtail(temp->zombie_children, (void*) pid);
+			cv_signal(curproc->waitfor_child, curproc->waitlock);
+		}
+	lock_release(curproc->waitlock);
+	return retval;
+}
+
+struct proc *proc_getby_pid(pid_t pid){
+	KASSERT(proc_exists(pid));
+	return proctable[pid];
 }

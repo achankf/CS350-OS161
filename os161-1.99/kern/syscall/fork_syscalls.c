@@ -5,7 +5,7 @@
 #include <current.h>
 #include <addrspace.h>
 
-int sys_fork(){
+int sys_fork(pid_t *ret){
 	struct proc * temp;
 
 	// p_name gets deep-copied by proc_create
@@ -18,5 +18,9 @@ int sys_fork(){
 		proc_destroy(temp);
 		return ENOMEM;
 	}
+
+	temp->parent = curproc->pid;
+
+	*ret = temp->pid;
 	return 0;
 }

@@ -191,5 +191,7 @@ void kprintf_bootstrap(void);
 #define DIVROUNDUP(a,b) (((a)+(b)-1)/(b))
 #define ROUNDUP(a,b)    (DIVROUNDUP(a,b)*b)
 
+#define VALID_PTR(ptr) (ptr != NULL && ((uint32_t)ptr % 4 == 0))
+#define VALID_USERPTR(ptr) (VALID_PTR(ptr) && ((uint32_t)ptr < 0x80000000))
 
 #endif /* _LIB_H_ */

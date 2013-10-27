@@ -33,8 +33,10 @@
 #include <lib.h>
 #include <mips/trapframe.h>
 #include <thread.h>
+#include <proc.h>
 #include <current.h>
 #include <syscall.h>
+#include <addrspace.h>
 
 
 /*
@@ -100,22 +102,29 @@ syscall(struct trapframe *tf)
 	retval = 0;
 
 	switch (callno) {
-	    case SYS_reboot:
-		err = sys_reboot(tf->tf_a0);
-		break;
-
-	    case SYS___time:
-		err = sys___time((userptr_t)tf->tf_a0,
-				 (userptr_t)tf->tf_a1);
-		break;
-            case SYS__exit:
-		err = sys__exit(tf->tf_a0);
-		break;
-            case SYS_write:
-		err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
-		break;
+    case SYS_reboot:
+			err = sys_reboot(tf->tf_a0);
+			break;
+	  case SYS___time:
+			err = sys___time((userptr_t)tf->tf_a0, (userptr_t)tf->tf_a1);
+			break;
+		case SYS__exit:
+			err = sys__exit(tf->tf_a0);
+			break;
+		case SYS_write:
+			err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
+			break;
 		case SYS_fork:
-			err = sys_fork();
+			// store the child's PID in retval
+			err = sys_fork(&retval);
+			if (err != 0){
+				retval = -1;
+				break;
+			}
+  		struct trapframe *newp_tf = kmalloc(sizeof(struct trapframe));
+			*newp_tf = *tf;
+			thread_fork("", proc_getby_pid(retval),
+				enter_forked_process, (void*)newp_tf, 0);
 			break;
 		case SYS_waitpid:
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
@@ -169,10 +178,15 @@ syscall(struct trapframe *tf)
  * Thus, you can trash it and do things another way if you prefer.
  */
 void
-enter_forked_process(struct trapframe *tf)
+enter_forked_process(void *tf, unsigned long unused)
 {
+	(void)unused;
   // all elements in struct trapframe are integral values
   // thus, the following will do a deep copy
-  struct trapframe newp_tf = *tf;
-  (void)newp_tf;
+  struct trapframe newp_tf = *(struct trapframe *)tf;
+	kfree(tf);
+	newp_tf.tf_v0 = 0;
+	newp_tf.tf_a3 = 0;
+	newp_tf.tf_epc += 4;
+	mips_usermode(&newp_tf);
 }

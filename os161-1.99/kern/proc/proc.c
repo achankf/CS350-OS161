@@ -87,6 +87,8 @@ proc_create(const char *name)
 
 	proc->pid = idgen_get_next(pidgen);
 
+	proc->fd_idgen = idgen_create(3);
+
 	return proc;
 }
 
@@ -155,6 +157,7 @@ void
 proc_bootstrap(void)
 {
 	pidgen = idgen_create(1);
+
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");

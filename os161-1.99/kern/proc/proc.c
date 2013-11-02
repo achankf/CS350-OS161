@@ -118,6 +118,8 @@ proc_create(const char *name)
 
 	proctable[proc->pid] = proc;
 
+	proc->fd_idgen = idgen_create(3);
+
 	return proc;
 }
 

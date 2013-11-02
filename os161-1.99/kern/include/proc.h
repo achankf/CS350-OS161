@@ -48,6 +48,15 @@ struct vnode;
 /*
  * Process structure.
  */
+
+struct fd_tuple {
+	struct vnode *vn;
+	size_t offset;
+
+};
+
+#define FDTABLE_SIZE 256 // fixed size of fd table
+
 struct proc {
 	char *p_name;			/* Name of this process */
 	struct spinlock p_lock;		/* Lock for this structure */
@@ -65,6 +74,10 @@ struct proc {
 	struct queue *zombie_children;
 	struct cv *waitfor_child;
 	struct lock *waitlock;
+
+	struct fd_tuple *fdtable[FDTABLE_SIZE];
+	struct id_generator *fd_idgen;
+
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

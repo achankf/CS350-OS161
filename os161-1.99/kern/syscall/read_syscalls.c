@@ -4,33 +4,47 @@
 #include <syscall.h>
 #include <lib.h>
 #include <vfs.h>
+#include <addrspace.h>
 #include <vnode.h>
 #include <thread.h>
+#include <uio.h>
 #include <proc.h>
 
+// no tested
 
 int sys_read(int fd, void *buf, size_t buflen);
 {
-	// curproc->fdtable[fd].status = 0;
-	// curproc->fdtable
-
 	int result;
-	size_t stoplen;
+	struct fd_tuple *fd_t = fdtable[fd];
 
-	result = copycheck(usersrc, len, &stoplen);
-	if (result) {
-		return result;
+	struct iovec iov;
+	struct uio u;
+
+	iov.iov_ubase = buf;
+	iov.iov_len = buflen;		 // length of the memory space
+	u.uio_iov = &iov;
+	u.uio_iovcnt = 1;
+	u.uio_resid = buflen;		// amount to read from the file
+	u.uio_offset = fd_t->offset;
+	u.uio_segflg = UIO_USERSPACE;
+	u.uio_rw = UIO_READ;
+	u.uio_space = curproc_getas();
+
+	result = VOP_READ(fd_t->vn, &u));
+	if (result!= 0) {
+		// need to change errno	    
+
+	    return -1;
+
 	}
-	if (stoplen != len) {
-		/* Single block, can't legally truncate it. */
-		return EFAULT;
+
+	fd_t->offset = u.uio_offset;
+
+	if(u.uio_resid > 0) {
+		return buflen;
+	} else {
+		return 0;
 	}
-
-	// memcpy (dest, src, len);
-	memcpy(buf, curproc->fdtable[fd]->vn->vn_data, buflen);
-
-
-	return 0;
-
+	
 }
 

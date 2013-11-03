@@ -4,23 +4,45 @@
 #include <vfs.h>
 #include <vnode.h>
 #include <thread.h>
+#include <proc.h>
 #include <current.h>
+#include <limits.h>
 
 int sys_open(const char *filename, int flags, int mode);
 {
-	struct vnode ** vn;
+	struct vnode *vn = NULL;
+
+	// check params
+	if (filename == NULL) {
+		// return
+	}
+
+	char * mut_filename = NULL;
+	mut_filename = kstrdup(filename);
 
 	// vfs_open(char *path, int openflags, mode_t mode, struct vnode **ret)
-	vfs_open(filename, flags, mode,vn)
+	int result = vfs_open(filename, flags, mode, &vn)
+	kfree(mut_filename);
 
-	int result = idgen_get_next(curproc->fd_idgen);
+	// search if vnode already exists
+	for (int i=0; i<OPEN_MAX; i++) {
+		if (vn == fdtable[i]->vn) {
+			return i;
+		}
+	}
 
-	struct fd_tuple *node;
-	node->vn = vn;
+	int fd = idgen_get_next(curproc->fd_idgen);
 
-	curproc->fdtable[result]=node;
+	// initialize fd_tuple and alloc mem if necessary
+	struct fd_tuple *node = kmalloc(sizeof(fd_tuple));
+	node->vn = *vn;
+	node->offset = 0;
+	node->counter = 1;
+	node->lock = lock_create("lock");
 
-	return result;
+	curproc->fdtable[fd]=node;
+
+	return fd;
 
 }
 

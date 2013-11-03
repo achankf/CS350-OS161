@@ -169,13 +169,19 @@ syscall(struct trapframe *tf)
  * Thus, you can trash it and do things another way if you prefer.
  */
 void
-enter_forked_process(void *tf, unsigned long unused)
+enter_forked_process(void *tf, unsigned long fork_sem)
 {
-	(void)unused;
+	(void)fork_sem;
+
+	DEBUG(DB_EXEC, "REMAINDER: I AM IN CHILD THREAD\n");
+	
   // all elements in struct trapframe are integral values
   // thus, the following will do a deep copy
   struct trapframe newp_tf = *(struct trapframe *)tf;
-	kfree(tf);
+
+	DEBUG(DB_EXEC, "fork, child: trapframe copied; parent go ahead finish and destroy your stack.\n");
+	V((struct semaphore *) fork_sem);
+
 	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
 	newp_tf.tf_epc += 4;
 	as_activate();

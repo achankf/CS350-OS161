@@ -51,7 +51,7 @@
 #include <id_generator.h>
 #include <syscall.h>
 
-#define PTABLE_SIZE 32
+#define PTABLE_SIZE 512
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.

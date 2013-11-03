@@ -20,18 +20,11 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 	temp = proc_create_runprogram(curproc->p_name);
 	if (temp == NULL) return ENOMEM;
 
-	DEBUG(DB_EXEC, "FORKED %d\n", temp->pid);
-
-	struct trapframe *newp_tf = kmalloc(sizeof(struct trapframe));
-	if (newp_tf == NULL){
-		proc_destroy(temp);
-		return ENOMEM;
-	}
+	DEBUG(DB_EXEC, "FORKING PROCESS %d into %d\n", curproc->pid, temp->pid);
 
 	// copy the address space
 	as_copy(curproc->p_addrspace, &temp->p_addrspace);
 	if (temp->p_addrspace == NULL){
-		kfree(newp_tf);
 		proc_destroy(temp);
 		return ENOMEM;
 	}
@@ -43,9 +36,14 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		temp->fdtable[i] = curproc->fdtable[i];
 	}
 
-	// structure of integral values => deep copy of the trap frame
-	*newp_tf = *tf;
-	thread_fork("", temp, enter_forked_process, (void*)newp_tf, 0);
+	struct semaphore *fork_sem = sem_create("fork_sem", 0);
+	DEBUG(DB_EXEC, "fork_sem: I will make sure tf is copied by child thread before *my* process stack gets deleted.\n");
+
+	thread_fork("make child", temp, enter_forked_process, (void*)tf, (unsigned long) fork_sem);
+
+	DEBUG(DB_EXEC, "fork: waiting trapframe to be copied\n");
+	P(fork_sem);
+	sem_destroy(fork_sem);
 
 	return 0;
 }

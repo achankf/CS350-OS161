@@ -68,12 +68,11 @@ struct proc {
 	/* VFS */
 	struct vnode *p_cwd;		/* current working directory */
 
-	/* add more material here as needed */
 	pid_t pid;
 	pid_t parent;
-	struct queue *zombie_children;
 	struct cv *waitfor_child;
-	struct lock *waitlock;
+	bool zombie;
+	int retval;
 
 	struct fd_tuple *fdtable[FDTABLE_SIZE];
 	struct id_generator *fd_idgen;
@@ -112,15 +111,15 @@ struct proc *proc_getby_pid(pid_t pid);
 // check whether the pid exists
 bool proc_exists(pid_t pid);
 
-// get the parent of the given PID
-pid_t proc_get_parent(pid_t pid);
-
-// DESTROY the process and unlink pid from the proctable
-int proctable_unlink(pid_t pid);
+struct proc *proc_get_parent(struct proc *);
 
 /*
- * Wait up parent process' CV and ask the parent to do clean up on the child.
+ * Wake up parent process' CV and ask the parent to do clean up on the child.
  * SHOULD ONLY BE CALLED WHEN A PROCESS EXITS
  */
-int cleanup_my_mess(pid_t pid);
+void proc_i_died(int exit_code);
+
+// wait for the target process to die, and then destroy it
+int proc_wait_and_exorcise(pid_t pid, int *retval);
+
 #endif /* _PROC_H_ */

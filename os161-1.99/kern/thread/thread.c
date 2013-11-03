@@ -792,6 +792,10 @@ thread_exit(void)
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
 
+	thread_force_zombie();
+}
+
+void thread_force_zombie(void){
 	/* Interrupts off on this processor */
         splhigh();
 	thread_switch(S_ZOMBIE, NULL);

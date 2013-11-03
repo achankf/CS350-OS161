@@ -7,48 +7,28 @@
 
 int sys_waitpid(pid_t pid, int *status, int option){
 
-kprintf("[kernel]: Waiting for PID %d\n",pid);
+	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d begins ----------------\n",sys_getpid(),pid);
 
 	if (option != 0){
 		return EINVAL;
 	}
-kprintf("Test 1: %d\n",!proc_exists(pid));
+	DEBUG(DB_EXEC, "Test 1: %d\n",!proc_exists(pid));
 	if (!proc_exists(pid)){
 		return ESRCH;
 	}
-kprintf("Test 2: %d %d\n",proc_get_parent(pid), sys_getpid());
-	if (proc_get_parent(pid) != sys_getpid()){
+	DEBUG(DB_EXEC,"Test 2: %d %d\n",proc_getby_pid(pid)->parent, curproc->pid);
+	if (curproc->pid != proc_getby_pid(pid)->parent){
 		return ECHILD;
 	}
-kprintf("Test 3: %d for status pointer %p\n",!VALID_USERPTR(status), status);
-kprintf("%d %d\n", VALID_PTR(status), VALID_USERPTR(status));
+	DEBUG(DB_EXEC, "Test 3: %d for status pointer %p\n",!VALID_USERPTR(status), status);
 	if (!VALID_USERPTR(status)){
 		return EFAULT;
 	}
-kprintf("All precondition okay\n");
+	DEBUG(DB_EXEC,"All precondition okay\n");
 
-	lock_acquire(curproc->waitlock);
-		int len = q_len(curproc->zombie_children);
+	int ret = proc_wait_and_exorcise(pid, status);
 
-		// keep looking for zombie children util one of them is the target
-		while (true){
-			for (int i = 0; i < len; i++){
-				pid_t child = (pid_t)q_remhead(curproc->zombie_children);
+	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d ends ----------------\n", sys_getpid(), pid);
 
-				// child found
-				if (child == pid) goto FOUND;
-
-				// put back the child if not the target
-				q_addtail(curproc->zombie_children, (void*)child);
-			}
-			cv_wait(curproc->waitfor_child, curproc->waitlock);
-		}
-FOUND:
-		proctable_unlink(pid);
-	lock_release(curproc->waitlock);
-
-	*status = pid;
-kprintf("Done waiting\n");
-
-	return 0;
+	return ret;
 }

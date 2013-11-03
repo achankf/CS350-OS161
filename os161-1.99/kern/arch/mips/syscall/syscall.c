@@ -116,15 +116,7 @@ syscall(struct trapframe *tf)
 			break;
 		case SYS_fork:
 			// store the child's PID in retval
-			err = sys_fork(&retval);
-			if (err != 0){
-				retval = -1;
-				break;
-			}
-  		struct trapframe *newp_tf = kmalloc(sizeof(struct trapframe));
-			*newp_tf = *tf;
-			thread_fork("", proc_getby_pid(retval),
-				enter_forked_process, (void*)newp_tf, 0);
+			err = sys_fork(tf, &retval);
 			break;
 		case SYS_waitpid:
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
@@ -185,8 +177,7 @@ enter_forked_process(void *tf, unsigned long unused)
   // thus, the following will do a deep copy
   struct trapframe newp_tf = *(struct trapframe *)tf;
 	kfree(tf);
-	newp_tf.tf_v0 = 0;
-	newp_tf.tf_a3 = 0;
+	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
 	newp_tf.tf_epc += 4;
 	mips_usermode(&newp_tf);
 }

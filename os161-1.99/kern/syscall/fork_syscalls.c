@@ -12,6 +12,10 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 
 	KASSERT(curproc->pid > 0);
 
+	if (proc_reach_limit()){
+		return ENPROC;
+	}
+
 	// p_name gets deep-copied by proc_create
 	temp = proc_create_runprogram(curproc->p_name);
 	if (temp == NULL) return ENOMEM;

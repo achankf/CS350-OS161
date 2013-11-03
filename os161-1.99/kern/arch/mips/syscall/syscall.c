@@ -120,7 +120,6 @@ syscall(struct trapframe *tf)
 			break;
 		case SYS_waitpid:
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
-			retval = err == 0 ? 0 : -1;
 			break;
 		case SYS_getpid:
 			err = 0;
@@ -179,5 +178,6 @@ enter_forked_process(void *tf, unsigned long unused)
 	kfree(tf);
 	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
 	newp_tf.tf_epc += 4;
+	as_activate();
 	mips_usermode(&newp_tf);
 }

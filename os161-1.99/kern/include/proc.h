@@ -122,4 +122,6 @@ void proc_i_died(int exit_code);
 // wait for the target process to die, and then destroy it
 int proc_wait_and_exorcise(pid_t pid, int *retval);
 
+bool proc_reach_limit(void);
+
 #endif /* _PROC_H_ */

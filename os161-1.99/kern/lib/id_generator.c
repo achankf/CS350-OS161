@@ -56,4 +56,16 @@ void idgen_destroy(struct id_generator *idgen){
 		q_remhead(idgen->not_used);
 	}
 	q_destroy(idgen->not_used);
+	kfree(idgen);
+}
+
+bool idgen_reach(struct id_generator *idgen, int32_t val){
+	bool ret;
+
+	KASSERT(idgen != NULL);
+
+	spinlock_acquire(&idgen->lock);
+		ret = q_empty(idgen->not_used) && idgen->current >= val;
+	spinlock_release(&idgen->lock);
+	return ret;
 }

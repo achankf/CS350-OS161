@@ -13,8 +13,10 @@ void idgen_destroy(struct id_generator *idgen);
 
 /*
  * idgen_get_next - get the next available value from the generator
+ * idgen_reach - check whether val == current value
  * idgen_put_back - return an id to the generator
  */
 int32_t idgen_get_next(struct id_generator *idgen);
+bool idgen_reach(struct id_generator *idgen, int32_t val);
 int idgen_put_back(struct id_generator *idgen, int32_t val);
 #endif

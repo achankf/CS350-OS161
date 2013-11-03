@@ -51,7 +51,7 @@
 #include <id_generator.h>
 #include <syscall.h>
 
-#define PTABLE_SIZE 256
+#define PTABLE_SIZE 64
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -342,4 +342,8 @@ int proc_wait_and_exorcise(pid_t pid, int *retval){
 struct proc *proc_get_parent(struct proc *proc){
 	KASSERT(proc != NULL);
 	return proctable[proc->parent];
+}
+
+bool proc_reach_limit(){
+	return idgen_reach(pidgen, PTABLE_SIZE);
 }

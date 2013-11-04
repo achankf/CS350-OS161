@@ -36,6 +36,7 @@
 #include <types.h>
 #include <kern/errno.h>
 #include <kern/fcntl.h>
+#include <copyinout.h>
 #include <lib.h>
 #include <proc.h>
 #include <current.h>
@@ -52,7 +53,7 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname)
+runprogram(char *progname, int argc, char **argv)
 {
 	struct addrspace *as;
 	struct vnode *v;
@@ -97,10 +98,41 @@ runprogram(char *progname)
 		return result;
 	}
 
+
+	vaddr_t temp[argc * sizeof(char*)];
+	//char **temp = kmalloc[argc * sizeof(char*)];
+
+	for(int i = 0; i < argc; i++)
+	{
+		int length = strlen(argv[i]);
+		stackptr -= (length+1);
+		temp[i] = stackptr;
+		copyout(argv[i], (userptr_t) stackptr, length);
+	}
+
+	stackptr = 4 * (stackptr / 4);
+	vaddr_t u_addr_start = stackptr;
+	stackptr -= ((argc+1) * sizeof(char*));
+
+	for(int i = 0; i < argc; i++)
+	{
+		for(unsigned int j = 0; j < sizeof(char*); j++)
+		{	
+			stackptr = temp[i];
+			stackptr += 1;
+		}
+	}
+
+	for(unsigned int i = 0; i < sizeof(char*); i++)
+	{
+		stackptr = (vaddr_t) NULL;
+		stackptr += 1;
+	}
+
 	/* Warp to user mode. */
-	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
-			  stackptr, entrypoint);
-	
+	enter_new_process(argc /*argc*/, (userptr_t) u_addr_start /*userspace addr of argv*/, stackptr, entrypoint);
+
+	kfree(temp);	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;

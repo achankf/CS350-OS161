@@ -62,7 +62,7 @@ int sys_write(int fd, userptr_t buf, size_t nbytes);
 int sys_read(int fd, void *buf, size_t buflen);
 int sys_open(const char *filename, int flags);
 int sys_close(int fd);
-int sys_fork(pid_t *ret);
+int sys_fork(struct trapframe *tf, pid_t *ret);
 int sys_getpid(void);
 int sys_waitpid(pid_t pid, int *status, int option);
 #endif /* _SYSCALL_H_ */

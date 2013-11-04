@@ -168,5 +168,6 @@ void schedule(void);
  */
 void thread_consider_migration(void);
 
+void thread_force_zombie(void);
 
 #endif /* _THREAD_H_ */

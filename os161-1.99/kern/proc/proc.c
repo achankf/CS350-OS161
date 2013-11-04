@@ -49,8 +49,9 @@
 #include <vnode.h>
 #include <array.h>
 #include <id_generator.h>
+#include <syscall.h>
 
-#define PTABLE_SIZE 256
+#define PTABLE_SIZE 512
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -59,6 +60,7 @@ struct proc *kproc;
 
 struct id_generator *pidgen;
 struct proc *proctable[PTABLE_SIZE];
+struct lock *proctable_lock;
 
 /*
  * Create a proc structure.
@@ -85,22 +87,14 @@ proc_create(const char *name)
 		kfree(proc);
 		return NULL;
 	}
-	proc->zombie_children = q_create(10);
-	if (proc->zombie_children == NULL){
-		cv_destroy(proc->waitfor_child);
-		kfree(proc);
-		return NULL;
-	}
 	proc->p_name = kstrdup(name);
 	if (proc->p_name == NULL) {
-		q_destroy(proc->zombie_children);
 		cv_destroy(proc->waitfor_child);
 		kfree(proc);
 		return NULL;
 	}
-	proc->waitlock = lock_create("");
-	if (proc->waitlock == NULL){
-		q_destroy(proc->zombie_children);
+	proc->fd_idgen = idgen_create(3);
+	if (proc->fd_idgen == NULL){
 		cv_destroy(proc->waitfor_child);
 		kfree(proc->p_name);
 		kfree(proc);
@@ -117,8 +111,6 @@ proc_create(const char *name)
 	proc->p_cwd = NULL;
 
 	proctable[proc->pid] = proc;
-
-	proc->fd_idgen = idgen_create(3);
 
 	return proc;
 }
@@ -140,47 +132,26 @@ proc_destroy(struct proc *proc)
 	 * do, some don't.
 	 */
 
+	DEBUG(DB_EXEC,"Destroying process %d\n", proc->pid);
+
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);
 
-	/*
-	 * We don't take p_lock in here because we must have the only
-	 * reference to this structure. (Otherwise it would be
-	 * incorrect to destroy it.)
-	 */
+	// clean link on the proctable
+	proctable[proc->pid] = NULL;
+	// recover the unused pid
+	idgen_put_back(pidgen, proc->pid);
 
-	/* VFS fields */
-	if (proc->p_cwd) {
-		VOP_DECREF(proc->p_cwd);
-		proc->p_cwd = NULL;
+	// remove process reference from its associated threads
+	int size = threadarray_num(&proc->p_threads);
+	for (int i = 0; i < size; i++){
+		struct thread *temp = threadarray_get(&proc->p_threads, i);
+		proc_remthread(temp);
 	}
 
-	/* VM fields */
-	if (proc->p_addrspace) {
-		/*
-		 * In case p is the currently running process (which
-		 * it might be in some circumstances, or if this code
-		 * gets moved into exit as suggested above), clear
-		 * p_addrspace before calling as_destroy. Otherwise if
-		 * as_destroy sleeps (which is quite possible) when we
-		 * come back we'll be calling as_activate on a
-		 * half-destroyed address space. This tends to be
-		 * messily fatal.
-		 */
-		struct addrspace *as;
-
-		as_deactivate();
-		as = curproc_setas(NULL);
-		as_destroy(as);
-	}
+	// most memory references are cleaned by sys__exit
 
 	threadarray_cleanup(&proc->p_threads);
-	spinlock_cleanup(&proc->p_lock);
-
-	q_destroy(proc->zombie_children);
-	cv_destroy(proc->waitfor_child);
-	lock_destroy(proc->waitlock);
-	kfree(proc->p_name);
 	kfree(proc);
 }
 
@@ -191,6 +162,7 @@ void
 proc_bootstrap(void)
 {
 	pidgen = idgen_create(1);
+	proctable_lock = lock_create("proctable lock");
 	bzero(proctable, sizeof(struct proc*) * PTABLE_SIZE);
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
@@ -313,15 +285,13 @@ curproc_getas(void)
  * one.
  */
 struct addrspace *
-curproc_setas(struct addrspace *newas)
-{
+curproc_setas(struct addrspace *newas){
 	struct addrspace *oldas;
-	struct proc *proc = curproc;
 
-	spinlock_acquire(&proc->p_lock);
-	oldas = proc->p_addrspace;
-	proc->p_addrspace = newas;
-	spinlock_release(&proc->p_lock);
+	spinlock_acquire(&curproc->p_lock);
+	oldas = curproc->p_addrspace;
+	curproc->p_addrspace = newas;
+	spinlock_release(&curproc->p_lock);
 	return oldas;
 }
 
@@ -335,40 +305,45 @@ proc_exists(pid_t pid){
 	return proc_within_bound(pid) && proctable[pid] != NULL;
 }
 
-pid_t
-proc_get_parent(pid_t pid){
-	KASSERT(proc_exists(pid));
-	return proctable[pid]->parent;
-}
+void proc_i_died(int exit_code){
+	struct proc *parent = proctable[curproc->parent];
 
-int proctable_unlink(pid_t pid){
-	KASSERT(proc_exists(pid));
-	lock_acquire(curproc->waitlock);
-		proc_destroy(proctable[pid]);
-		proctable[pid] = NULL;
-	lock_release(curproc->waitlock);
+	DEBUG(DB_EXEC,"proc_i_died: pid:%d exit:%d\n", sys_getpid(), exit_code);
 
-	// recover the pid to become available for future use
-	return idgen_put_back(pidgen, pid);
-}
-
-int cleanup_my_mess(pid_t pid){
-	int retval = 0;
-	lock_acquire(curproc->waitlock);
-		struct proc *temp = proctable[proc_get_parent(pid)];
-
-		if (proc_get_parent(pid) == 1){
-			proctable_unlink(pid);
-		} else {
-			// add cuproc's PID as a zombie, then get killed by the parent
-			retval = q_addtail(temp->zombie_children, (void*) pid);
-			cv_signal(curproc->waitfor_child, curproc->waitlock);
+	lock_acquire(proctable_lock);
+		if (proctable[curproc->parent] != NULL && curproc->parent != 1){
+			// ask parent to kill me
+			curproc->zombie = true;
+			curproc->retval = exit_code;
+			cv_signal(parent->waitfor_child, proctable_lock);
 		}
-	lock_release(curproc->waitlock);
-	return retval;
+	lock_release(proctable_lock);
 }
 
 struct proc *proc_getby_pid(pid_t pid){
 	KASSERT(proc_exists(pid));
 	return proctable[pid];
+}
+
+int proc_wait_and_exorcise(pid_t pid, int *retval){
+
+	DEBUG(DB_EXEC, "Waiting to kill child %d\n", pid);
+
+	lock_acquire(proctable_lock);
+		while(!proctable[pid]->zombie){
+			cv_wait(curproc->waitfor_child, proctable_lock);
+		}
+		*retval = proctable[pid]->retval;
+		proc_destroy(proctable[pid]);
+	lock_release(proctable_lock);
+	return 0;
+}
+
+struct proc *proc_get_parent(struct proc *proc){
+	KASSERT(proc != NULL);
+	return proctable[proc->parent];
+}
+
+bool proc_reach_limit(){
+	return idgen_reach(pidgen, PTABLE_SIZE);
 }

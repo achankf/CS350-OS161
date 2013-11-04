@@ -116,19 +116,10 @@ syscall(struct trapframe *tf)
 			break;
 		case SYS_fork:
 			// store the child's PID in retval
-			err = sys_fork(&retval);
-			if (err != 0){
-				retval = -1;
-				break;
-			}
-  		struct trapframe *newp_tf = kmalloc(sizeof(struct trapframe));
-			*newp_tf = *tf;
-			thread_fork("", proc_getby_pid(retval),
-				enter_forked_process, (void*)newp_tf, 0);
+			err = sys_fork(tf, &retval);
 			break;
 		case SYS_waitpid:
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
-			retval = err == 0 ? 0 : -1;
 			break;
 		case SYS_getpid:
 			err = 0;
@@ -178,15 +169,21 @@ syscall(struct trapframe *tf)
  * Thus, you can trash it and do things another way if you prefer.
  */
 void
-enter_forked_process(void *tf, unsigned long unused)
+enter_forked_process(void *tf, unsigned long fork_sem)
 {
-	(void)unused;
+	(void)fork_sem;
+
+	DEBUG(DB_EXEC, "REMAINDER: I AM IN CHILD THREAD\n");
+	
   // all elements in struct trapframe are integral values
   // thus, the following will do a deep copy
   struct trapframe newp_tf = *(struct trapframe *)tf;
-	kfree(tf);
-	newp_tf.tf_v0 = 0;
-	newp_tf.tf_a3 = 0;
+
+	DEBUG(DB_EXEC, "fork, child: trapframe copied; parent go ahead finish and destroy your stack.\n");
+	V((struct semaphore *) fork_sem);
+
+	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
 	newp_tf.tf_epc += 4;
+	as_activate();
 	mips_usermode(&newp_tf);
 }

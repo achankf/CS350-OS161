@@ -7,18 +7,19 @@
 #include <proc.h>
 #include <current.h>
 
-int sys_close(int fd);
+int sys_close(int fd)
 {
 
 	struct vnode *vn;
-	struct fd_tuple * fd_t = fdtable[fd];
+	struct fd_tuple * fd_t = curproc->fdtable[fd];
 
 	vn = fd_t->vn;
 
-	vfs_close(vn)
+	vfs_close(vn);
 
 	// recycle fd back to fdtable
-	int ctr = --(fd_t->counter);
+	fd_t->counter--;
+	int ctr = fd_t->counter;
 
 	// no more references
 	if (ctr == 0) {

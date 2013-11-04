@@ -4,8 +4,8 @@
 #include <thread.h>
 
 static void read_test() {
-	char * path = "";
-	int fd = sys_open(path, O_RDONLY);
+	char * path = "read_test.txt";
+	int fd = sys_open(path, O_RDONLY,0664);
 
 	char * result;
 	

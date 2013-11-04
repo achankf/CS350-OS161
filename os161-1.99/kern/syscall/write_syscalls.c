@@ -4,6 +4,7 @@
 #include <syscall.h>
 #include <lib.h>
 #include <vfs.h>
+#include <current.h>
 #include <addrspace.h>
 #include <vnode.h>
 #include <thread.h>
@@ -13,10 +14,10 @@
 // so far just changed somethings from sys_read
 // might not work
 
-int sys_write(int fd, userptr_t user_buffer, size_t numBytes)
-{
+int sys_write(int fd, userptr_t user_buffer, size_t numBytes) {
+
 	int result;
-	struct fd_tuple *fd_t = fdtable[fd];
+	struct fd_tuple *fd_t = curproc->fdtable[fd];
 
 	struct iovec iov;
 	struct uio u;
@@ -31,7 +32,7 @@ int sys_write(int fd, userptr_t user_buffer, size_t numBytes)
 	u.uio_rw = UIO_WRITE;
 	u.uio_space = curproc_getas();
 
-	result = VOP_WRITE(fd_t->vn, &u));
+	result = VOP_WRITE(fd_t->vn, &u);
 	if (result!= 0) {
 		// need to change errno	    
 

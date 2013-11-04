@@ -5,6 +5,7 @@
 #include <lib.h>
 #include <vfs.h>
 #include <addrspace.h>
+#include <current.h>
 #include <vnode.h>
 #include <thread.h>
 #include <uio.h>
@@ -12,10 +13,10 @@
 
 // no tested
 
-int sys_read(int fd, void *buf, size_t buflen);
+int sys_read(int fd, void *buf, size_t buflen)
 {
 	int result;
-	struct fd_tuple *fd_t = fdtable[fd];
+	struct fd_tuple *fd_t = curproc->fdtable[fd];
 
 	struct iovec iov;
 	struct uio u;
@@ -30,8 +31,8 @@ int sys_read(int fd, void *buf, size_t buflen);
 	u.uio_rw = UIO_READ;
 	u.uio_space = curproc_getas();
 
-	result = VOP_READ(fd_t->vn, &u));
-	if (result!= 0) {
+	result = VOP_READ(fd_t->vn, &u);
+	if (result != 0) {
 		// need to change errno	    
 
 	    return -1;

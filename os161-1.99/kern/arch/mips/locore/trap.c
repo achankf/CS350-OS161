@@ -39,6 +39,7 @@
 #include <vm.h>
 #include <mainbus.h>
 #include <syscall.h>
+#include <proc.h>
 
 
 /* in exception.S */
@@ -108,13 +109,15 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 		break;
 	}
 
-	/*
-	 * You will probably want to change this.
-	 */
-
-	kprintf("Fatal user mode trap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
+	kprintf("-----------------------------\n");
+	kprintf("Zombie master has cast magic and turned this process into a zombie\n");
+	kprintf("\tFatal user mode\n\ttrap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
 		code, sig, trapcodenames[code], epc, vaddr);
-	panic("I don't know how to handle this\n");
+	kprintf("-----------------------------\n");
+	lock_acquire(proctable_lock_get());
+		proc_destroy(curproc);
+	lock_release(proctable_lock_get());
+	thread_force_zombie();
 }
 
 /*

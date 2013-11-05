@@ -49,20 +49,18 @@
 #include <vnode.h>
 #include <array.h>
 #include <id_generator.h>
+#include <syscall.h>
 
-#define PTABLE_SIZE 256
+#define PTABLE_SIZE 512
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
 struct proc *kproc;
 
-struct processinfo{
-	struct proc *process;
-};
-
 struct id_generator *pidgen;
-struct processinfo processtable[PTABLE_SIZE];
+struct proc *proctable[PTABLE_SIZE];
+struct lock *proctable_lock;
 
 /*
  * Create a proc structure.
@@ -77,8 +75,34 @@ proc_create(const char *name)
 	if (proc == NULL) {
 		return NULL;
 	}
+
+	proc->waitfor_child = cv_create("");
+	if (proc->waitfor_child == NULL){
+		kfree(proc);
+		return NULL;
+	}
 	proc->p_name = kstrdup(name);
 	if (proc->p_name == NULL) {
+		cv_destroy(proc->waitfor_child);
+		kfree(proc);
+		return NULL;
+	}
+
+	proc->fd_idgen = idgen_create(3);
+	if (proc->fd_idgen == NULL){
+		cv_destroy(proc->waitfor_child);
+		kfree(proc->p_name);
+		kfree(proc);
+		return NULL;
+	}
+
+	proc->children = q_create(10);
+
+	proc->pid = idgen_get_next(pidgen);
+	if (proc->pid >= PTABLE_SIZE){ // no need to recover pid
+		cv_destroy(proc->waitfor_child);
+		kfree(proc->fd_idgen);
+		kfree(proc->p_name);
 		kfree(proc);
 		return NULL;
 	}
@@ -92,10 +116,7 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
-	proc->pid = idgen_get_next(pidgen);
-
-	struct processinfo *procinfo = &processtable[proc->pid];
-	procinfo->process = proc;
+	proctable[proc->pid] = proc;
 
 	return proc;
 }
@@ -117,44 +138,41 @@ proc_destroy(struct proc *proc)
 	 * do, some don't.
 	 */
 
+	DEBUG(DB_EXEC,"Destroying process %d\n", proc->pid);
+
 	KASSERT(proc != NULL);
 	KASSERT(proc != kproc);
+	KASSERT(lock_do_i_hold(proctable_lock));
 
-	/*
-	 * We don't take p_lock in here because we must have the only
-	 * reference to this structure. (Otherwise it would be
-	 * incorrect to destroy it.)
-	 */
+	// clean link on the proctable
+	proctable[proc->pid] = NULL;
 
-	/* VFS fields */
-	if (proc->p_cwd) {
-		VOP_DECREF(proc->p_cwd);
-		proc->p_cwd = NULL;
+	if (proc->children == NULL) goto SKIP_KILLING_CHILDREN;
+
+	while (!q_empty(proc->children)){
+		pid_t child = (pid_t) q_remhead(proc->children);
+		if (!proctable[child]->zombie) continue;
+		proc_destroy(proctable[child]);
 	}
 
-	/* VM fields */
-	if (proc->p_addrspace) {
-		/*
-		 * In case p is the currently running process (which
-		 * it might be in some circumstances, or if this code
-		 * gets moved into exit as suggested above), clear
-		 * p_addrspace before calling as_destroy. Otherwise if
-		 * as_destroy sleeps (which is quite possible) when we
-		 * come back we'll be calling as_activate on a
-		 * half-destroyed address space. This tends to be
-		 * messily fatal.
-		 */
-		struct addrspace *as;
+	q_destroy(proc->children);
 
-		as_deactivate();
-		as = curproc_setas(NULL);
-		as_destroy(as);
+SKIP_KILLING_CHILDREN:
+
+	// recover the unused pid
+	idgen_put_back(pidgen, proc->pid);
+
+	// remove process reference from its associated threads
+	int size = threadarray_num(&proc->p_threads);
+	for (int i = 0; i < size; i++){
+		struct thread *temp = threadarray_get(&proc->p_threads, i);
+		proc_remthread(temp);
 	}
 
-	threadarray_cleanup(&proc->p_threads);
+	// most memory references are cleaned by sys__exit
+
 	spinlock_cleanup(&proc->p_lock);
-
-	kfree(proc->p_name);
+	threadarray_cleanup(&proc->p_threads);
 	kfree(proc);
 }
 
@@ -165,6 +183,8 @@ void
 proc_bootstrap(void)
 {
 	pidgen = idgen_create(1);
+	proctable_lock = lock_create("proctable lock");
+	bzero(proctable, sizeof(struct proc*) * PTABLE_SIZE);
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
@@ -275,10 +295,27 @@ curproc_getas(void)
 	}
 #endif
 
-	spinlock_acquire(&curproc->p_lock);
-	as = curproc->p_addrspace;
-	spinlock_release(&curproc->p_lock);
+	// already has a lock
+	if (spinlock_do_i_hold(&curproc->p_lock)){
+		as = curproc->p_addrspace;
+	} else { // no lock
+		spinlock_acquire(&curproc->p_lock);
+			as = curproc->p_addrspace;
+		spinlock_release(&curproc->p_lock);
+	}
 	return as;
+}
+
+static
+struct addrspace *
+proc_setas(struct proc *proc, struct addrspace *newas){
+	struct addrspace *oldas;
+
+	spinlock_acquire(&proc->p_lock);
+	oldas = proc->p_addrspace;
+	proc->p_addrspace = newas;
+	spinlock_release(&proc->p_lock);
+	return oldas;
 }
 
 /*
@@ -286,14 +323,40 @@ curproc_getas(void)
  * one.
  */
 struct addrspace *
-curproc_setas(struct addrspace *newas)
-{
-	struct addrspace *oldas;
-	struct proc *proc = curproc;
+curproc_setas(struct addrspace *newas){
+	return proc_setas(curproc, newas);
+}
 
-	spinlock_acquire(&proc->p_lock);
-	oldas = proc->p_addrspace;
-	proc->p_addrspace = newas;
-	spinlock_release(&proc->p_lock);
-	return oldas;
+inline static bool
+proc_within_bound(pid_t pid){
+	return pid >= 0 && pid < PTABLE_SIZE;
+}
+
+bool
+proc_exists(pid_t pid){
+	return proc_within_bound(pid) && proctable[pid] != NULL;
+}
+
+struct proc *proc_getby_pid(pid_t pid){
+	KASSERT(proc_exists(pid));
+	return proctable[pid];
+}
+
+struct proc *proc_get_parent(struct proc *proc){
+	KASSERT(proc != NULL);
+	return proctable[proc->parent];
+}
+
+bool proc_reach_limit(){
+	return idgen_reach(pidgen, PTABLE_SIZE);
+}
+
+struct lock *proctable_lock_get(){
+	return proctable_lock;
+}
+
+void proc_destroy_addrspace(struct proc *proc){
+	if (proc->p_addrspace) {
+		as_destroy(proc_setas(proc,NULL));
+	}
 }

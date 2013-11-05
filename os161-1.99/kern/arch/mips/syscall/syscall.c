@@ -33,8 +33,10 @@
 #include <lib.h>
 #include <mips/trapframe.h>
 #include <thread.h>
+#include <proc.h>
 #include <current.h>
 #include <syscall.h>
+#include <addrspace.h>
 
 
 /*
@@ -100,22 +102,21 @@ syscall(struct trapframe *tf)
 	retval = 0;
 
 	switch (callno) {
-	    case SYS_reboot:
-		err = sys_reboot(tf->tf_a0);
-		break;
-
-	    case SYS___time:
-		err = sys___time((userptr_t)tf->tf_a0,
-				 (userptr_t)tf->tf_a1);
-		break;
-            case SYS__exit:
-		err = sys__exit(tf->tf_a0);
-		break;
-            case SYS_write:
-		err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
-		break;
+    case SYS_reboot:
+			err = sys_reboot(tf->tf_a0);
+			break;
+	  case SYS___time:
+			err = sys___time((userptr_t)tf->tf_a0, (userptr_t)tf->tf_a1);
+			break;
+		case SYS__exit:
+			sys__exit(tf->tf_a0);
+			panic("sys_exit: the thread must be exited or zombiefied");
+		case SYS_write:
+			err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
+			break;
 		case SYS_fork:
-			err = sys_fork();
+			// store the child's PID in retval
+			err = sys_fork(tf, &retval);
 			break;
 		case SYS_waitpid:
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
@@ -168,10 +169,21 @@ syscall(struct trapframe *tf)
  * Thus, you can trash it and do things another way if you prefer.
  */
 void
-enter_forked_process(struct trapframe *tf)
+enter_forked_process(void *tf, unsigned long fork_sem)
 {
+	(void)fork_sem;
+
+	DEBUG(DB_EXEC, "REMAINDER: I AM IN CHILD THREAD\n");
+	
   // all elements in struct trapframe are integral values
   // thus, the following will do a deep copy
-  struct trapframe newp_tf = *tf;
-  (void)newp_tf;
+  struct trapframe newp_tf = *(struct trapframe *)tf;
+
+	DEBUG(DB_EXEC, "fork, child: trapframe copied; parent go ahead finish and destroy your stack.\n");
+	V((struct semaphore *) fork_sem);
+
+	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
+	newp_tf.tf_epc += 4;
+	as_activate();
+	mips_usermode(&newp_tf);
 }

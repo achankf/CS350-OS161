@@ -98,41 +98,39 @@ runprogram(char *progname, int argc, char **argv)
 		return result;
 	}
 
-
-	vaddr_t temp[argc * sizeof(char*)];
+	vaddr_t temp[argc];
 	//char **temp = kmalloc[argc * sizeof(char*)];
+
 
 	for(int i = 0; i < argc; i++)
 	{
+		kprintf("%d: %p\n", i, (void *)stackptr);
+		kprintf("%s: %d\n", argv[i], strlen(argv[i])); 
 		int length = strlen(argv[i]);
 		stackptr -= (length+1);
 		temp[i] = stackptr;
-		copyout(argv[i], (userptr_t) stackptr, length);
+		copyout(argv[i], (userptr_t) stackptr, length+1);
 	}
 
 	stackptr = 4 * (stackptr / 4);
-	vaddr_t u_addr_start = stackptr;
 	stackptr -= ((argc+1) * sizeof(char*));
+	vaddr_t u_addr_start = stackptr;
 
 	for(int i = 0; i < argc; i++)
-	{
-		for(unsigned int j = 0; j < sizeof(char*); j++)
-		{	
-			stackptr = temp[i];
-			stackptr += 1;
-		}
+	{		
+		*(char*)stackptr = temp[i];
+		stackptr += sizeof(char*);
 	}
 
-	for(unsigned int i = 0; i < sizeof(char*); i++)
-	{
-		stackptr = (vaddr_t) NULL;
-		stackptr += 1;
-	}
+	kprintf("reached here\n");
+
+	*(char*)stackptr = (vaddr_t) NULL;
+
+	kprintf("u_addr_start: %p\n", (void *)u_addr_start);
 
 	/* Warp to user mode. */
-	enter_new_process(argc /*argc*/, (userptr_t) u_addr_start /*userspace addr of argv*/, stackptr, entrypoint);
+	enter_new_process(argc /*argc*/, (userptr_t) u_addr_start /*userspace addr of argv*/, u_addr_start, entrypoint);
 
-	kfree(temp);	
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;

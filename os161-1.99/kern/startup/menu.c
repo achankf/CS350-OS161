@@ -41,6 +41,7 @@
 #include <sfs.h>
 #include <syscall.h>
 #include <test.h>
+#include <synch.h>
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -103,7 +104,14 @@ cmd_progthread(void *ptr, unsigned long nargs)
 
 	strcpy(progname, args[0]);
 
-	result = runprogram(progname, nargs-1, args);
+	//kprintf("\nThis is cmd_progthread:\n");
+
+	//kprintf("%d: %s\n", (int)nargs, args[0]);
+	//kprintf("%d: %s\n", (int)nargs, args[1]);
+	//kprintf("%d: %s\n", (int)nargs, args[2]);
+
+	result = runprogram(progname, nargs, args);
+	
 	if (result) {
 		kprintf("Running program %s failed: %s\n", args[0],
 			strerror(result));
@@ -152,6 +160,17 @@ common_prog(int nargs, char **args)
 		proc_destroy(proc);
 		return result;
 	}
+
+	int status; 
+	result = sys_waitpid(proc->pid,&status,0);
+
+	if (result)
+	{
+		kprintf("waitpid failed\n");
+		proc_destroy(proc);
+		return result;
+	}
+	
 
 	/*
 	 * The new process will be destroyed when the program exits...
@@ -613,6 +632,14 @@ cmd_dispatch(char *cmd)
 		args[nargs++] = word;
 	}
 
+	/*
+	kprintf("\nThis is in cmd_dispatch:\n");
+	kprintf("%d, %s\n", nargs, args[0]);
+	kprintf("%d, %s\n", nargs, args[1]);
+	kprintf("%d, %s\n", nargs, args[2]); 
+	kprintf("%d, %s\n", nargs, args[3]);
+	*/
+
 	if (nargs==0) {
 		return 0;
 	}
@@ -698,6 +725,9 @@ menu(char *args)
 	char buf[64];
 
 	menu_execute(args, 1);
+
+        //struct semaphore* sem = sem_create("",0);
+        //P(sem);
 
 	while (1) {
 		kprintf("OS/161 kernel [? for menu]: ");

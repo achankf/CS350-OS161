@@ -7,18 +7,11 @@
 #include <current.h>
 #include <addrspace.h>
 
-int sys__exit(int exit_code)
+void sys__exit(int exit_code)
 {
 	DEBUG(DB_EXEC, "Exiting %d\n", sys_getpid());
 
-	// destroy the address space
-	if (curproc->p_addrspace) {
-		struct addrspace *as;
-
-		as_deactivate();
-		as = curproc_setas(NULL);
-		as_destroy(as);
-	}
+	proc_destroy_addrspace(curproc);
 
 	/* VFS fields */
 	if (curproc->p_cwd) {
@@ -27,21 +20,33 @@ int sys__exit(int exit_code)
 	}
 
 	// clean up unneeded memory
-	spinlock_cleanup(&curproc->p_lock);
 	idgen_destroy(curproc->fd_idgen);
 	cv_destroy(curproc->waitfor_child);
 	kfree(curproc->p_name);
 
-	if (curproc->parent <= 1){
-		// not parent to clean up its mess -- suicide and become a zombie directly
-		proc_destroy(curproc);
-		thread_force_zombie();
-	} else {
-		// parent do the dirty work of destroying a thread
-		proc_i_died(exit_code);
-		thread_exit();
-	}
+	struct lock *proctable_lock = proctable_lock_get();
 
-	panic("sys__exit: thread_exit should not return");
-	return -1;
+	DEBUG(DB_EXEC,"proc_i_died: pid:%d exit:%d\n", sys_getpid(), exit_code);
+
+	// make sure either children die or parent dies -- not both
+	lock_acquire(proctable_lock);
+
+	struct proc *parent = proc_get_parent(curproc);
+
+	// not parent to clean up its mess -- suicide and become a zombie directly
+	if (parent != NULL && curproc->parent != 1){
+		// ask parent to kill me
+		curproc->zombie = true;
+		curproc->retval = exit_code;
+		cv_signal(parent->waitfor_child, proctable_lock);
+		lock_release(proctable_lock);
+		thread_exit();
+		panic("Exited thread not allowed to come up!");
+	} else {
+		proc_destroy(curproc);
+		lock_release(proctable_lock);
+		thread_force_zombie();
+		panic("The zombie walks!");
+	}
+	// not reached
 }

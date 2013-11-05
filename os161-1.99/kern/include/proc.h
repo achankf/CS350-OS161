@@ -73,6 +73,7 @@ struct proc {
 	struct cv *waitfor_child;
 	bool zombie;
 	int retval;
+	struct queue *children;
 
 	struct fd_tuple *fdtable[FDTABLE_SIZE];
 	struct id_generator *fd_idgen;
@@ -113,15 +114,13 @@ bool proc_exists(pid_t pid);
 
 struct proc *proc_get_parent(struct proc *);
 
-/*
- * Wake up parent process' CV and ask the parent to do clean up on the child.
- * SHOULD ONLY BE CALLED WHEN A PROCESS EXITS
- */
-void proc_i_died(int exit_code);
-
 // wait for the target process to die, and then destroy it
 int proc_wait_and_exorcise(pid_t pid, int *retval);
 
 bool proc_reach_limit(void);
+
+struct lock *proctable_lock_get(void);
+
+void proc_destroy_addrspace(struct proc *);
 
 #endif /* _PROC_H_ */

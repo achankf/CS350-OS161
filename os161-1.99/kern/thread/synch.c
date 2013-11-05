@@ -260,11 +260,11 @@ cv_create(const char *name)
 void
 cv_destroy(struct cv *cv)
 {
-        KASSERT(cv != NULL);
-
-        wchan_destroy(cv->cv_wchan);
-        kfree(cv->cv_name);
-        kfree(cv);
+	KASSERT(cv != NULL);
+	if (cv->cv_wchan != NULL)
+		wchan_destroy(cv->cv_wchan);
+	kfree(cv->cv_name);
+	kfree(cv);
 }
 
 void

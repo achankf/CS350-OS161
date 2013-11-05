@@ -6,6 +6,7 @@
 #include <current.h>
 
 int sys_waitpid(pid_t pid, int *status, int option){
+	struct proc *child;
 
 	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d begins ----------------\n",sys_getpid(),pid);
 
@@ -26,9 +27,15 @@ int sys_waitpid(pid_t pid, int *status, int option){
 	}
 	DEBUG(DB_EXEC,"All precondition okay\n");
 
-	int ret = proc_wait_and_exorcise(pid, status);
+	lock_acquire(proctable_lock_get());
+		child = proc_getby_pid(pid);
+		while(!child->zombie){
+			cv_wait(curproc->waitfor_child, proctable_lock_get());
+		}
+		*status = child->retval;
+	lock_release(proctable_lock_get());
 
 	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d ends ----------------\n", sys_getpid(), pid);
 
-	return ret;
+	return 0;
 }

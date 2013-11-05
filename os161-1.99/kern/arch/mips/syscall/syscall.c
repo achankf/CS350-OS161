@@ -109,8 +109,8 @@ syscall(struct trapframe *tf)
 			err = sys___time((userptr_t)tf->tf_a0, (userptr_t)tf->tf_a1);
 			break;
 		case SYS__exit:
-			err = sys__exit(tf->tf_a0);
-			break;
+			sys__exit(tf->tf_a0);
+			panic("sys_exit: the thread must be exited or zombiefied");
 		case SYS_write:
 			err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
 			break;

@@ -37,6 +37,7 @@
 #include <clock.h>
 #include <thread.h>
 #include <proc.h>
+#include <current.h>
 #include <vfs.h>
 #include <sfs.h>
 #include <syscall.h>
@@ -176,9 +177,22 @@ common_prog(int nargs, char **args)
 		return result;
 	}
 	*/
+	
+        lock_acquire(proctable_lock_get());
+	proc->parent = curproc->pid;
+                while(!proc->zombie){
+                        cv_wait(curproc->waitfor_child, proctable_lock_get());
+                }
+                //result = proc->retval;
+	proc_destroy(proc);
+        lock_release(proctable_lock_get());
+	
+
+	/*
 	for(int i = 0; i < 10; i--)
 	{
 	}
+	*/
 
 	/*
 	 * The new process will be destroyed when the program exits...

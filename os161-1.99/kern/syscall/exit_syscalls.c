@@ -34,7 +34,7 @@ void sys__exit(int exit_code)
 	struct proc *parent = proc_get_parent(curproc);
 
 	// not parent to clean up its mess -- suicide and become a zombie directly
-	if (parent != NULL && curproc->parent != 1){
+	if (parent != NULL){
 		// ask parent to kill me
 		curproc->zombie = true;
 		curproc->retval = exit_code;

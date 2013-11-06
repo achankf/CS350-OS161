@@ -157,20 +157,28 @@ common_prog(int nargs, char **args)
 			args /* thread arg */, nargs /* thread arg */);
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
+		//lock_acquire(proctable_lock_get());
 		proc_destroy(proc);
+		//lock_release(proctable_lock_get());
 		return result;
 	}
 
+	/*
 	int status; 
 	result = sys_waitpid(proc->pid,&status,0);
 
 	if (result)
 	{
-		kprintf("waitpid failed\n");
+		kprintf("waitpid failed: %s\n", strerror(result));
+		lock_acquire(proctable_lock_get());
 		proc_destroy(proc);
+		lock_release(proctable_lock_get());
 		return result;
 	}
-	
+	*/
+	for(int i = 0; i < 10; i--)
+	{
+	}
 
 	/*
 	 * The new process will be destroyed when the program exits...

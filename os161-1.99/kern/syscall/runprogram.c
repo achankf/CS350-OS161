@@ -118,13 +118,13 @@ runprogram(char *progname, int argc, char **argv)
 
 	for(int i = 0; i < argc; i++)
 	{		
-		*(char*)stackptr = temp[i];
+		*(char**)stackptr = (char*)temp[i];
 		stackptr += sizeof(char*);
 	}
 
 	kprintf("reached here\n");
 
-	*(char*)stackptr = (vaddr_t) NULL;
+	*(char**)stackptr = (vaddr_t) NULL;
 
 	kprintf("u_addr_start: %p\n", (void *)u_addr_start);
 

@@ -40,6 +40,7 @@
 #include <thread.h> /* required for struct threadarray */
 #include <id_generator.h>
 #include <queue.h>
+#include <limits.h>
 #include <synch.h>
 
 struct addrspace;
@@ -51,11 +52,10 @@ struct vnode;
 
 struct fd_tuple {
 	struct vnode *vn;
-	size_t offset;
-
+	off_t offset;
+	int counter;
+	struct lock *lock; // sync between reads and writes
 };
-
-#define FDTABLE_SIZE 256 // fixed size of fd table
 
 struct proc {
 	char *p_name;			/* Name of this process */
@@ -75,7 +75,7 @@ struct proc {
 	int retval;
 	struct queue *children;
 
-	struct fd_tuple *fdtable[FDTABLE_SIZE];
+	struct fd_tuple *fdtable[OPEN_MAX];
 	struct id_generator *fd_idgen;
 
 };

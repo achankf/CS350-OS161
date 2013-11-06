@@ -7,6 +7,7 @@
 #include <mips/trapframe.h>
 #include <addrspace.h>
 #include <synch.h>
+#include <limits.h>
 
 int sys_fork(struct trapframe *tf, pid_t *ret){
 	struct proc * temp;
@@ -58,7 +59,7 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		temp->fdtable[i] = curproc->fdtable[i];
 	}
 
-	for (int i = 0; i < FDTABLE_SIZE; i++){
+	for (int i = 0; i < OPEN_MAX; i++){
 		temp->fdtable[i] = curproc->fdtable[i];
 	}
 

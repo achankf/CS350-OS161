@@ -1,36 +1,46 @@
 #include <types.h>
-#include <clock.h>
-#include <copyinout.h>
 #include <syscall.h>
 #include <lib.h>
 #include <vfs.h>
+#include <addrspace.h>
+#include <current.h>
 #include <vnode.h>
 #include <thread.h>
+#include <uio.h>
 #include <proc.h>
 
+// not tested
 
-int sys_read(int fd, void *buf, size_t buflen);
-{
-	// curproc->fdtable[fd].status = 0;
-	// curproc->fdtable
-
+int sys_read(int fd, void *buf, size_t buflen) {
 	int result;
-	size_t stoplen;
+	struct fd_tuple *fd_t = curproc->fdtable[fd];
+    
+	struct iovec iov;
+	struct uio ku;
 
-	result = copycheck(usersrc, len, &stoplen);
-	if (result) {
-		return result;
+	lock_acquire(fd_t->lock);
+
+    uio_kinit(&iov,&ku, buf, buflen,fd_t->offset,UIO_READ);
+    result = VOP_READ(fd_t->vn, &ku);
+    
+    if (result != 0) {
+		// need to change errno	    
+		lock_release(fd_t->lock);
+        
+        return -1;
+
 	}
-	if (stoplen != len) {
-		/* Single block, can't legally truncate it. */
-		return EFAULT;
+
+	fd_t->offset = ku.uio_offset;
+
+	if(ku.uio_resid > 0) { 
+        lock_release(fd_t->lock);
+		return buflen;
 	}
-
-	// memcpy (dest, src, len);
-	memcpy(buf, curproc->fdtable[fd]->vn->vn_data, buflen);
-
-
-	return 0;
+    else {
+		lock_release(fd_t->lock);
+		return 0;
+	}
 
 }
 

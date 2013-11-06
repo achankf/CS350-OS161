@@ -62,6 +62,7 @@ struct id_generator *pidgen;
 struct proc *proctable[PTABLE_SIZE];
 struct lock *proctable_lock;
 
+
 /*
  * Create a proc structure.
  */
@@ -115,6 +116,8 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
+
+	bzero(proc->fdtable, sizeof(struct fd_tuple*) * OPEN_MAX);
 
 	proctable[proc->pid] = proc;
 
@@ -185,13 +188,15 @@ proc_bootstrap(void)
 	pidgen = idgen_create(1);
 	proctable_lock = lock_create("proctable lock");
 	bzero(proctable, sizeof(struct proc*) * PTABLE_SIZE);
+	
+
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
 	}
-#if OPT_A1
-	kprintf("kproc = %p\n", kproc);
-#endif
+	#if OPT_A1
+		kprintf("kproc = %p\n", kproc);
+	#endif
 }
 
 /*

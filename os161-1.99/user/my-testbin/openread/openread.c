@@ -3,9 +3,14 @@
 #include <unistd.h>
 #include <errno.h>
 
-int main() {
+int main(int argc, char **argv) {
 
-	const char * path = "read_test.txt";
+	if (argc != 2){
+		puts("Requires a file as argument");
+		return 1;
+	}
+
+	const char * path = argv[1];
 	int fd = open(path, O_RDWR); 
 
 	char result[9];

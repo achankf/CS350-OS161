@@ -15,33 +15,40 @@ int sys_open(const char *filename, int flags)
 	// check params
 	if (filename == NULL) {
 		// return errno
-		return -1;
-	}
+        return -1;
+	} 
 
 	char * mut_filename = NULL;
 	mut_filename = kstrdup(filename);
 
 	// vfs_open(char *path, int openflags, mode_t mode, struct vnode **ret)
-	int result = vfs_open(mut_filename, flags, 1, &vn);
-	kfree(mut_filename);
-
+    int result = vfs_open(mut_filename, flags, 0664, &vn);
+    
+    kfree(mut_filename);
+    
 	if (result != 0) {
 		// return errno !
-		return -1;
-	}
+       return -1;
+    }
 
-	// search if vnode already exists
+	/* search if vnode already exists
 	for (int i=0; i<OPEN_MAX; i++) {
-		if (curproc->fdtable[i]->vn == vn) {
+		kprintf("before if\n");
+		if (curproc->fdtable[i]->vn == vn) { // if statement causing error
+			kprintf("inside if\n");
 			return i;
 		}
+		kprintf("%d\n", i);
+
 	}
+	*/
 
 	int fd = idgen_get_next(curproc->fd_idgen);
 
-	// initialize fd_tuple and alloc mem if necessary
+	// initialize fd_tuple and malloc mem if necessary
 	struct fd_tuple *node = kmalloc(sizeof(struct fd_tuple));
-	node->vn = vn;
+	
+    node->vn = vn;
 	node->offset = 0;
 	node->counter = 1;
 	node->lock = lock_create("lock");

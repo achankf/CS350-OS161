@@ -1,21 +1,36 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
+#include <errno.h>
 
 int main() {
 
-	/*
-	char * path = "read_test.txt";
-	int fd = sys_open(path, O_RDONLY,0664);
+	const char * path = "read_test.txt";
+	int fd = open(path, O_RDWR); 
 
-	char * result;
+	char result[9];
+    char *dest;
+    dest = result;
+    read(fd, dest, 9);
 	
-	// read in 5 chars from a file
-	if (sys_read(fd, result, 5) == 0) {
-		printf(%s, result);
-	}
-	return 0;
-	*/
-	int pid = getpid();
-	printf("This is my PID:%d\n", pid);
-  	return 0;
+    printf("%s", dest);
+    write(fd, dest, 9);
+    
+    close(fd);
+
+    fd = open(path, O_RDWR);
+    char result2[9];
+    char *dest2 = result2;
+    read(fd,dest2,5);
+
+    printf(dest2);
+
+    write(fd, dest,9);
+
+    close(fd);
+
+
+    return 0;
 }
+
+

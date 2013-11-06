@@ -158,42 +158,21 @@ common_prog(int nargs, char **args)
 			args /* thread arg */, nargs /* thread arg */);
 	if (result) {
 		kprintf("thread_fork failed: %s\n", strerror(result));
-		//lock_acquire(proctable_lock_get());
-		proc_destroy(proc);
-		//lock_release(proctable_lock_get());
-		return result;
-	}
-
-	/*
-	int status; 
-	result = sys_waitpid(proc->pid,&status,0);
-
-	if (result)
-	{
-		kprintf("waitpid failed: %s\n", strerror(result));
 		lock_acquire(proctable_lock_get());
-		proc_destroy(proc);
+			proc_destroy(proc);
 		lock_release(proctable_lock_get());
 		return result;
 	}
-	*/
-	
-        lock_acquire(proctable_lock_get());
-	proc->parent = curproc->pid;
-                while(!proc->zombie){
-                        cv_wait(curproc->waitfor_child, proctable_lock_get());
-                }
-                //result = proc->retval;
-	proc_destroy(proc);
-        lock_release(proctable_lock_get());
-	
 
-	/*
-	for(int i = 0; i < 10; i--)
-	{
-	}
-	*/
-
+	lock_acquire(proctable_lock_get());
+		proc->parent = curproc->pid;
+		while(!proc->zombie){
+			cv_wait(curproc->waitfor_child, proctable_lock_get());
+		}
+		//result = proc->retval;
+		proc_destroy(proc);
+	lock_release(proctable_lock_get());
+	
 	/*
 	 * The new process will be destroyed when the program exits...
 	 * once you write the code for handling that.
@@ -654,14 +633,6 @@ cmd_dispatch(char *cmd)
 		args[nargs++] = word;
 	}
 
-	/*
-	kprintf("\nThis is in cmd_dispatch:\n");
-	kprintf("%d, %s\n", nargs, args[0]);
-	kprintf("%d, %s\n", nargs, args[1]);
-	kprintf("%d, %s\n", nargs, args[2]); 
-	kprintf("%d, %s\n", nargs, args[3]);
-	*/
-
 	if (nargs==0) {
 		return 0;
 	}
@@ -747,9 +718,6 @@ menu(char *args)
 	char buf[64];
 
 	menu_execute(args, 1);
-
-        //struct semaphore* sem = sem_create("",0);
-        //P(sem);
 
 	while (1) {
 		kprintf("OS/161 kernel [? for menu]: ");

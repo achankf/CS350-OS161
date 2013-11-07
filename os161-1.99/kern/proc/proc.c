@@ -52,8 +52,6 @@
 #include <syscall.h>
 #include <kern/unistd.h>
 
-#define PTABLE_SIZE 100
-
 /*
  * The process for the kernel; this holds all the kernel-only threads.
  */
@@ -74,42 +72,43 @@ proc_create(const char *name)
 {
 	struct proc *proc;
 
+	// maximum is not reached
+	KASSERT(!proc_reach_limit());
+
 	proc = kmalloc(sizeof(*proc));
-	if (proc == NULL) {
-		return NULL;
-	}
+	if (proc == NULL) return NULL;
+
+	/*
+	 * WARNING: USING GOTO TO SIMPLIFY ERROR DEALLOCATIONS
+	 * GOTO ROCKS!!!!!!!!!!!!!!!!!!!!!!!!!!
+	 */
 
 	proc->waitfor_child = cv_create("");
-	if (proc->waitfor_child == NULL){
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->waitfor_child == NULL) goto ALLOC_CV_FAILURE;
+
 	proc->p_name = kstrdup(name);
-	if (proc->p_name == NULL) {
-		cv_destroy(proc->waitfor_child);
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->p_name == NULL) goto ALLOC_P_NAME_FAILURE;
 
 	proc->fd_idgen = idgen_create(3);
-	if (proc->fd_idgen == NULL){
-		cv_destroy(proc->waitfor_child);
-		kfree(proc->p_name);
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->fd_idgen == NULL) goto ALLOC_FD_IDGEN_FAILURE;
 
 	proc->children = q_create(10);
+	if (proc->children == NULL) goto ALLOC_PROC_CHILDREN_FAILURE;
+
+	goto END_OF_ALLOCATION;
+
+ALLOC_PROC_CHILDREN_FAILURE:
+	kfree(proc->fd_idgen);
+ALLOC_FD_IDGEN_FAILURE:
+	kfree(proc->p_name);
+ALLOC_P_NAME_FAILURE:
+	cv_destroy(proc->waitfor_child);
+ALLOC_CV_FAILURE:
+	kfree(proc);
+	return NULL;
+END_OF_ALLOCATION:
 
 	proc->pid = idgen_get_next(pidgen);
-	if (proc->pid >= PTABLE_SIZE){ // no need to recover pid
-		cv_destroy(proc->waitfor_child);
-		kfree(proc->fd_idgen);
-		kfree(proc->p_name);
-		kfree(proc);
-		return NULL;
-	}
-
 	threadarray_init(&proc->p_threads);
 	spinlock_init(&proc->p_lock);
 
@@ -155,6 +154,7 @@ proc_destroy(struct proc *proc)
 	// clean link on the proctable
 	proctable[proc->pid] = NULL;
 
+	// failed to allocate memory
 	if (proc->children == NULL) goto SKIP_KILLING_CHILDREN;
 
 	while (!q_empty(proc->children)){

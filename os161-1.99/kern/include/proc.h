@@ -44,6 +44,8 @@
 #include <synch.h>
 #include <fd_tuple.h>
 
+#define PTABLE_SIZE 100
+
 struct addrspace;
 struct vnode;
 

@@ -51,6 +51,14 @@ static void fd_tuple_destroy(struct fd_tuple *tuple){
 }
 
 void fd_tuple_give_up(struct fd_tuple *tuple){
+
+	/* if the tuple is NULL or it points to the global
+	 * tuples (i.e. stdin, stdout), then return immediately
+	 */
+	if (tuple == NULL
+		|| tuple == fd_tuple_stdin()
+		|| tuple == fd_tuple_stdout()) return;
+
 	lock_acquire(tuple->lock);
 		if (tuple->counter > 0){
 			tuple->counter++;
@@ -61,9 +69,10 @@ void fd_tuple_give_up(struct fd_tuple *tuple){
 }
 
 void fd_tuple_bootstrap(){
-	stdinput = fd_tuple_create("con:", O_RDONLY, 0644);
+	// mode is not used
+	stdinput = fd_tuple_create("con:", O_RDONLY, 0);
 	KASSERT(stdinput != NULL);
-	stdoutput = fd_tuple_create("con:", O_WRONLY, 0644);
+	stdoutput = fd_tuple_create("con:", O_WRONLY, 0);
 	KASSERT(stdoutput != NULL);
 }
 

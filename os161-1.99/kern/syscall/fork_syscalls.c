@@ -3,7 +3,6 @@
 #include <proc.h>
 #include <kern/errno.h>
 #include <current.h>
-#include <spl.h>
 #include <mips/trapframe.h>
 #include <addrspace.h>
 #include <synch.h>
@@ -11,21 +10,16 @@
 int sys_fork(struct trapframe *tf, pid_t *ret){
 	struct proc * temp;
 	int result;
-	int spl;
 
 	KASSERT(curproc->pid > 0);
 
-	spl = splhigh();
-
 	if (proc_reach_limit()){
-		splx(spl);
 		return ENPROC;
 	}
 
 	// p_name gets deep-copied by proc_create
 	temp = proc_create_runprogram(curproc->p_name);
 	if (temp == NULL){
-		splx(spl);
 		return ENOMEM;
 	}
 
@@ -34,7 +28,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 	// copy the address space
 	as_copy(curproc->p_addrspace, &temp->p_addrspace);
 	if (temp->p_addrspace == NULL){
-		splx(spl);
 		lock_acquire(proctable_lock_get());
 			proc_destroy(temp);
 		lock_release(proctable_lock_get());
@@ -47,7 +40,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 
 	result = q_addtail(curproc->children, (void*)temp->pid);
 	if (result != 0) {
-		splx(spl);
 		proc_destroy_addrspace(temp);
 		proc_destroy(temp);
 		lock_release(proctable_lock_get());
@@ -71,7 +63,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 
 	struct semaphore *fork_sem = sem_create("fork_sem", 0);
 	if (fork_sem == NULL){
-		splx(spl);
 		proc_destroy_addrspace(temp);
 		proc_destroy(temp);
 		lock_release(proctable_lock_get());
@@ -86,7 +77,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 	DEBUG(DB_EXEC, "fork: waiting trapframe to be copied\n");
 
 	if (result){
-		splx(spl);
 		proc_destroy_addrspace(temp);
 		proc_destroy(temp);
 		lock_release(proctable_lock_get());
@@ -94,7 +84,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		return ENOMEM;
 	} else {
 		lock_release(proctable_lock_get());
-		splx(spl);
 		P(fork_sem);
 	}
 

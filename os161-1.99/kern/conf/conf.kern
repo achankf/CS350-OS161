@@ -324,6 +324,7 @@ file      thread/clock.c
 # UW Mod
 # file      thread/proc.c
 file      proc/proc.c
+file			proc/fd_tuple.c
 file      thread/spl.c
 file      thread/spinlock.c
 file      thread/synch.c

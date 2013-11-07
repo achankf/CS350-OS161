@@ -50,8 +50,9 @@
 #include <array.h>
 #include <id_generator.h>
 #include <syscall.h>
+#include <kern/unistd.h>
 
-#define PTABLE_SIZE 512
+#define PTABLE_SIZE 100
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -62,6 +63,7 @@ struct id_generator *pidgen;
 struct proc *proctable[PTABLE_SIZE];
 struct lock *proctable_lock;
 
+struct fd_tuple *stdinput, stdoutput, stderror;
 
 /*
  * Create a proc structure.
@@ -117,7 +119,10 @@ proc_create(const char *name)
 	/* VFS fields */
 	proc->p_cwd = NULL;
 
-	bzero(proc->fdtable, sizeof(struct fd_tuple*) * OPEN_MAX);
+	bzero(proc->fdtable, sizeof(struct fd_tuple*) * FDTABLE_SIZE);
+	proc->fdtable[STDIN_FILENO] = fd_tuple_stdin();
+	proc->fdtable[STDOUT_FILENO] = fd_tuple_stdout();
+	proc->fdtable[STDERR_FILENO] = fd_tuple_stdout();
 
 	proctable[proc->pid] = proc;
 

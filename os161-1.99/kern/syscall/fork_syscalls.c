@@ -7,7 +7,6 @@
 #include <mips/trapframe.h>
 #include <addrspace.h>
 #include <synch.h>
-#include <limits.h>
 
 int sys_fork(struct trapframe *tf, pid_t *ret){
 	struct proc * temp;
@@ -55,16 +54,19 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		return ENOMEM;
 	}
 
-	for (int i = 0; i < OPEN_MAX; i++){
-		temp->fdtable[i] = curproc->fdtable[i];
+	// make a shallow copy of parent's fdtable
+	spinlock_acquire(&curproc->p_lock);
+	for (int i = 0; i < FDTABLE_SIZE; i++){
+		if (curproc->fdtable[i] == NULL) continue;
+		struct fd_tuple *tuple = curproc->fdtable[i];
+		temp->fdtable[i] = tuple;
+		lock_acquire(tuple->lock);
+			tuple->counter++;
+		lock_release(tuple->lock);
 	}
-
-	for (int i = 0; i < OPEN_MAX; i++){
-		temp->fdtable[i] = curproc->fdtable[i];
-	}
+	spinlock_release(&curproc->p_lock);
 
 	temp->parent = curproc->pid;
-
 	*ret = temp->pid;
 
 	struct semaphore *fork_sem = sem_create("fork_sem", 0);

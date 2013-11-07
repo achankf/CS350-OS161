@@ -42,6 +42,7 @@
 #include <queue.h>
 #include <limits.h>
 #include <synch.h>
+#include <fd_tuple.h>
 
 struct addrspace;
 struct vnode;
@@ -49,13 +50,6 @@ struct vnode;
 /*
  * Process structure.
  */
-
-struct fd_tuple {
-	struct vnode *vn;
-	off_t offset;
-	int counter;
-	struct lock *lock; // sync between reads and writes
-};
 
 struct proc {
 	char *p_name;			/* Name of this process */
@@ -68,16 +62,16 @@ struct proc {
 	/* VFS */
 	struct vnode *p_cwd;		/* current working directory */
 
+	struct fd_tuple *fdtable[FDTABLE_SIZE];
+	struct id_generator *fd_idgen;
+
+	// synchronized by proctable_lock
 	pid_t pid;
 	pid_t parent;
 	struct cv *waitfor_child;
 	bool zombie;
 	int retval;
 	struct queue *children;
-
-	struct fd_tuple *fdtable[OPEN_MAX];
-	struct id_generator *fd_idgen;
-
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */

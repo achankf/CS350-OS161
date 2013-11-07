@@ -22,14 +22,15 @@ static int test_open_read(const char *path){
  	//while ((err = read(fd, dest, BUF_SIZE))){
 	for(;;){
 		err = read(fd,dest,BUF_SIZE);
-		printf("%d\n", err);
 		if (err == -1) {
 			return 1;
 		} else if (err == 0){
 			break;
 		}
- 		printf("%s\n", dest);
+ 		printf("%s", dest);
 	}
+
+	puts("");
 
  	close(fd);
 	return 0;
@@ -44,7 +45,7 @@ int main(int argc, char **argv) {
 
 	const char *path = argv[1];
 
-	for (int i = 0; i < 100; i++){
+	for (int i = 0; i < 1; i++){
 		int result = test_open_read(path);
 		if (result){
 			printf("ERROR:%s\n", strerror(errno));

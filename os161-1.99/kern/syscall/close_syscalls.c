@@ -6,28 +6,14 @@
 #include <thread.h>
 #include <proc.h>
 #include <current.h>
+#include <kern/errno.h>
 
 int sys_close(int fd)
 {
 
-	struct vnode *vn;
-	struct fd_tuple * fd_t = curproc->fdtable[fd];
+	if (!proc_valid_fd(curproc, fd)) return EBADF;
 
-	vn = fd_t->vn;
-
-	vfs_close(vn);
-
-	// recycle fd back to fdtable
-	fd_t->counter--;
-	int ctr = fd_t->counter;
-
-	// no more references
-	if (ctr == 0) {
-		// free fd_tuple
-		lock_destroy(fd_t->lock);
-		kfree(fd_t);
-	}
-
+	fd_tuple_give_up(curproc->fdtable[fd]);
 	idgen_put_back(curproc->fd_idgen, fd);
 
 	return 0;

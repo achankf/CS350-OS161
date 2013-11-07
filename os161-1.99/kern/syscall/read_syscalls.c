@@ -13,26 +13,29 @@
 
 int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	int result;
-	struct fd_tuple *fd_t = curproc->fdtable[fd];
-    
+	struct fd_tuple *tuple;
 	struct iovec iov;
 	struct uio ku;
 
-	lock_acquire(fd_t->lock);
+	spinlock_acquire(&curproc->p_lock);
+		tuple = curproc->fdtable[fd];
+	spinlock_release(&curproc->p_lock);
 
-	uio_kinit(&iov,&ku, buf, buflen,fd_t->offset,UIO_READ);
-	result = VOP_READ(fd_t->vn, &ku);
+	lock_acquire(tuple->lock);
+
+	uio_kinit(&iov,&ku, buf, buflen,tuple->offset,UIO_READ);
+	result = VOP_READ(tuple->vn, &ku);
     
 	if (result != 0) {
 		// need to change errno	    
-		lock_release(fd_t->lock);
-		return -1;
+		lock_release(tuple->lock);
+		return result;
 	}
 
-	fd_t->offset = ku.uio_offset;
+	tuple->offset = ku.uio_offset;
 
-	lock_release(fd_t->lock);
-	*retval = buflen;
+	lock_release(tuple->lock);
+	*retval = buflen - ku.uio_resid;
 	return 0;
 }
 

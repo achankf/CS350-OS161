@@ -107,6 +107,7 @@ struct proc *proc_getby_pid(pid_t pid);
 
 // check whether the pid exists
 bool proc_exists(pid_t pid);
+bool proc_valid_fd(struct proc *process, int fd);
 
 struct proc *proc_get_parent(struct proc *);
 

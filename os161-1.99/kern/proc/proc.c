@@ -50,6 +50,7 @@
 #include <array.h>
 #include <id_generator.h>
 #include <syscall.h>
+#include <fd_tuple.h>
 #include <kern/unistd.h>
 
 /*
@@ -60,8 +61,6 @@ struct proc *kproc;
 struct id_generator *pidgen;
 struct proc *proctable[PTABLE_SIZE];
 struct lock *proctable_lock;
-
-struct fd_tuple *stdinput, stdoutput, stderror;
 
 /*
  * Create a proc structure.
@@ -374,4 +373,8 @@ void proc_destroy_addrspace(struct proc *proc){
 	if (proc->p_addrspace) {
 		as_destroy(proc_setas(proc,NULL));
 	}
+}
+
+bool proc_valid_fd(struct proc *process, int fd){
+	return fd >= 0 && fd < FDTABLE_SIZE && process->fdtable[fd] != NULL;
 }

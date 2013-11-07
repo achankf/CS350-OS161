@@ -1,7 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
+
+#define BUF_SIZE 4
+
+static int test_open_read(const char *path){
+	char result[BUF_SIZE];
+	char *dest = result;
+ 	int fd = open(path, O_RDWR);
+	int err;
+
+
+	if (fd == -1){
+		return 1;
+	}
+
+	printf("fd generated:%d\n", fd);
+
+ 	//while ((err = read(fd, dest, BUF_SIZE))){
+	for(;;){
+		err = read(fd,dest,BUF_SIZE);
+		printf("%d\n", err);
+		if (err == -1) {
+			return 1;
+		} else if (err == 0){
+			break;
+		}
+ 		printf("%s\n", dest);
+	}
+
+ 	close(fd);
+	return 0;
+}
 
 int main(int argc, char **argv) {
 
@@ -10,32 +42,17 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	const char * path = argv[1];
-	int fd = open(path, O_RDWR); 
+	const char *path = argv[1];
 
-	char result[9];
-    char *dest;
-    dest = result;
-    read(fd, dest, 9);
-	
-    printf("%s", dest);
-    write(fd, dest, 9);
-    
-    close(fd);
+	for (int i = 0; i < 100; i++){
+		int result = test_open_read(path);
+		if (result){
+			printf("ERROR:%s\n", strerror(errno));
+			return result;
+		}
+	}
 
-    fd = open(path, O_RDWR);
-    char result2[9];
-    char *dest2 = result2;
-    read(fd,dest2,5);
-
-    printf(dest2);
-
-    write(fd, dest,9);
-
-    close(fd);
-
-
-    return 0;
+	return 0;
 }
 
 

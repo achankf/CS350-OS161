@@ -11,7 +11,7 @@
 
 // not tested
 
-int sys_read(int fd, void *buf, size_t buflen) {
+int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	int result;
 	struct fd_tuple *fd_t = curproc->fdtable[fd];
     
@@ -20,27 +20,19 @@ int sys_read(int fd, void *buf, size_t buflen) {
 
 	lock_acquire(fd_t->lock);
 
-    uio_kinit(&iov,&ku, buf, buflen,fd_t->offset,UIO_READ);
-    result = VOP_READ(fd_t->vn, &ku);
+	uio_kinit(&iov,&ku, buf, buflen,fd_t->offset,UIO_READ);
+	result = VOP_READ(fd_t->vn, &ku);
     
-    if (result != 0) {
+	if (result != 0) {
 		// need to change errno	    
 		lock_release(fd_t->lock);
-        
-        return -1;
-
+		return -1;
 	}
 
 	fd_t->offset = ku.uio_offset;
 
-	if(ku.uio_resid > 0) { 
-        lock_release(fd_t->lock);
-		return buflen;
-	}
-    else {
-		lock_release(fd_t->lock);
-		return 0;
-	}
-
+	lock_release(fd_t->lock);
+	*retval = buflen;
+	return 0;
 }
 

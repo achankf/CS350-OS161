@@ -55,7 +55,7 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		return ENOMEM;
 	}
 
-	for (int i = 0; i < FDTABLE_SIZE; i++){
+	for (int i = 0; i < OPEN_MAX; i++){
 		temp->fdtable[i] = curproc->fdtable[i];
 	}
 

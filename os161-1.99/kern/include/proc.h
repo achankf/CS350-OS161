@@ -50,10 +50,16 @@ struct vnode;
  * Process structure.
  */
 
+ struct fd_table {
+ 	struct fd_tuple * fdtable[OPEN_MAX];
+ 	struct lock *lock;
+ 	volatile int ctr;
+ };
+
 struct fd_tuple {
 	struct vnode *vn;
-	off_t offset;
-	int counter;
+	volatile off_t offset;
+	volatile int counter;
 	struct lock *lock; // sync between reads and writes
 };
 
@@ -74,7 +80,7 @@ struct proc {
 	bool zombie;
 	int retval;
 
-	struct fd_tuple *fdtable[OPEN_MAX];
+	struct fd_table *fdtable;
 	struct id_generator *fd_idgen;
 
 };

@@ -10,6 +10,7 @@
 #include <thread.h>
 #include <uio.h>
 #include <proc.h>
+#include <synch.h>
 
 // so far just changed somethings from sys_read
 // might not work
@@ -20,9 +21,10 @@ int sys_write(int fd, userptr_t user_buffer, size_t numBytes) {
         return numBytes;
     }
 
-    
     int result;
 	struct fd_tuple *fd_t = curproc->fdtable[fd];
+
+    lock_acquire(fd_t->lock);
 
 	struct iovec iov;
 	struct uio ku;

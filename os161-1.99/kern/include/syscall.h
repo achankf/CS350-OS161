@@ -58,7 +58,7 @@ void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
 int sys_reboot(int code);
 int sys___time(userptr_t user_seconds, userptr_t user_nanoseconds);
 void sys__exit(int code);
-int sys_write(int fd, userptr_t buf, size_t nbytes);
+int sys_write(int fd, void *buf, size_t buflen, int *retval);
 int sys_read(int fd, void *buf, size_t buflen, int *retval);
 int sys_open(const char *filename, int flags, int *retval);
 int sys_close(int fd);

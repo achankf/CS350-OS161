@@ -9,8 +9,6 @@
 #include <uio.h>
 #include <proc.h>
 
-// not tested
-
 int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	int result;
 	struct fd_tuple *tuple;

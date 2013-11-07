@@ -10,40 +10,35 @@
 #include <thread.h>
 #include <uio.h>
 #include <proc.h>
-#include <synch.h>
 
 // so far just changed somethings from sys_read
 // might not work
 
-int sys_write(int fd, userptr_t user_buffer, size_t numBytes) {
-	if (fd == 1) {
-        kprintf((char *) user_buffer);
-        return numBytes;
-    }
-
-    int result;
-	struct fd_tuple *fd_t = curproc->fdtable[fd];
-
-    lock_acquire(fd_t->lock);
-
+int sys_write(int fd, void *buf, size_t buflen, int *retval) {
+	int result;
+	struct fd_tuple *tuple;
 	struct iovec iov;
 	struct uio ku;
 
-    uio_kinit(&iov,&ku, user_buffer, numBytes,fd_t->offset,UIO_WRITE);
+	spinlock_acquire(&curproc->p_lock);
+		tuple = curproc->fdtable[fd];
+	spinlock_release(&curproc->p_lock);
 
-	result = VOP_WRITE(fd_t->vn, &ku);
-	if (result!= 0) {
-		// need to change errno	    
-	    return -1;
-	}
+	lock_acquire(tuple->lock);
 
-	fd_t->offset = ku.uio_offset;
-
-	if(ku.uio_resid > 0) {
-		return numBytes;
-	} else {
-		return 0;
-	}
+	uio_kinit(&iov,&ku, buf, buflen,tuple->offset,UIO_WRITE);
+	result = VOP_WRITE(tuple->vn, &ku);
     
+	if (result != 0) {
+		// need to change errno	    
+		lock_release(tuple->lock);
+		return result;
+	}
+
+	tuple->offset = ku.uio_offset;
+
+	lock_release(tuple->lock);
+	*retval = buflen - ku.uio_resid;
+	return 0;
 }
 

@@ -4,28 +4,29 @@
 #include <lib.h>
 #include <synch.h>
 #include <kern/fcntl.h>
+#include <kern/errno.h>
 
 struct fd_tuple *stdinput, *stdoutput;
 
-struct fd_tuple *fd_tuple_create(const char *filename, int flags, mode_t mode){
+int fd_tuple_create(const char *filename, int flags, mode_t mode, struct fd_tuple **rettuple){
 
 	struct vnode *vn;
 	struct fd_tuple *node = kmalloc(sizeof(struct fd_tuple));
 
-	if (node == NULL) return NULL;
+	if (node == NULL) return ENOMEM;
 
 	node->lock = lock_create("");
 
 	if (node->lock == NULL){
 		kfree(node);
-		return NULL;
+		return ENOMEM;
 	}
 
 	char *filenamecopy = kstrdup(filename);
 	if (filenamecopy == NULL){
 		lock_destroy(node->lock);
 		kfree(node);
-		return NULL;
+		return ENOMEM;
 	}
 
 	int result = vfs_open(filenamecopy, flags, mode, &vn);
@@ -34,14 +35,16 @@ struct fd_tuple *fd_tuple_create(const char *filename, int flags, mode_t mode){
 	if (result){
 		lock_destroy(node->lock);
 		kfree(node);
-		return NULL;
+		return result;
 	}
 
 	node->vn = vn;
 	node->offset = 0;
 	node->counter = 1;
 
-	return node;
+	*rettuple = node;
+
+	return 0;
 }
 
 static void fd_tuple_destroy(struct fd_tuple *tuple){
@@ -60,6 +63,9 @@ void fd_tuple_give_up(struct fd_tuple *tuple){
 		|| tuple == fd_tuple_stdout()) return;
 
 	lock_acquire(tuple->lock);
+
+	DEBUG(DB_EXEC, "fd_tuple give_up: count left:%d\n", tuple->counter);
+
 		if (tuple->counter > 0){
 			tuple->counter++;
 		} else {
@@ -69,11 +75,13 @@ void fd_tuple_give_up(struct fd_tuple *tuple){
 }
 
 void fd_tuple_bootstrap(){
+	int result;
+
 	// mode is not used
-	stdinput = fd_tuple_create("con:", O_RDONLY, 0);
-	KASSERT(stdinput != NULL);
-	stdoutput = fd_tuple_create("con:", O_WRONLY, 0);
-	KASSERT(stdoutput != NULL);
+	result = fd_tuple_create("con:", O_RDONLY, 0, &stdinput);
+	KASSERT(result == 0);
+	result = fd_tuple_create("con:", O_WRONLY, 0, &stdoutput);
+	KASSERT(result == 0);
 }
 
 struct fd_tuple *fd_tuple_stdin(){

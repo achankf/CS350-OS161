@@ -16,7 +16,7 @@ struct fd_tuple {
 void fd_tuple_bootstrap(void);
 
 // create a fd_tuple
-struct fd_tuple *fd_tuple_create(const char *name, int flags, mode_t mode);
+int fd_tuple_create(const char *filename, int flags, mode_t mode, struct fd_tuple **rettuple);
 
 // decrement the counter or delete the destroy up the tuple
 void fd_tuple_give_up(struct fd_tuple *);

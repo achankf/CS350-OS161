@@ -23,6 +23,7 @@ void sys__exit(int exit_code)
 	// clean up unneeded memory
 
 	for (int i = 0; i < FDTABLE_SIZE; i++){
+		DEBUG(DB_EXEC, "exit: cleaning up fd:%d\n", i);
 		fd_tuple_give_up(curproc->fdtable[i]);
 	}
 

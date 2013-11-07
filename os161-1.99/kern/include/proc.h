@@ -113,10 +113,11 @@ struct proc *proc_get_parent(struct proc *);
 // wait for the target process to die, and then destroy it
 int proc_wait_and_exorcise(pid_t pid, int *retval);
 
-bool proc_reach_limit(void);
-
 struct lock *proctable_lock_get(void);
 
 void proc_destroy_addrspace(struct proc *);
+
+bool proc_reach_limit(void);
+bool proc_file_reach_limit(struct proc *);
 
 #endif /* _PROC_H_ */

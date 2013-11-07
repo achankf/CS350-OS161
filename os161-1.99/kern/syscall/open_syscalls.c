@@ -7,55 +7,33 @@
 #include <proc.h>
 #include <current.h>
 #include <limits.h>
+#include <kern/errno.h>
 
-int sys_open(const char *filename, int flags)
+int sys_open(const char *filename, int flags, int *retval)
 {
-	struct vnode *vn = NULL;
 
-	// check params
+	int result, fd;
+	struct fd_tuple *tuple;
+
 	if (filename == NULL) {
-		// return errno
-        return -1;
+		return EFAULT;
 	} 
 
-	char * mut_filename = NULL;
-	mut_filename = kstrdup(filename);
-
-	// vfs_open(char *path, int openflags, mode_t mode, struct vnode **ret)
-    int result = vfs_open(mut_filename, flags, 0664, &vn);
-    
-    kfree(mut_filename);
-    
-	if (result != 0) {
-		// return errno !
-       return -1;
-    }
-
-	/* search if vnode already exists
-	for (int i=0; i<OPEN_MAX; i++) {
-		kprintf("before if\n");
-		if (curproc->fdtable[i]->vn == vn) { // if statement causing error
-			kprintf("inside if\n");
-			return i;
-		}
-		kprintf("%d\n", i);
-
+	if (proc_file_reach_limit(curproc)){
+		return EMFILE;
 	}
-	*/
 
-	int fd = idgen_get_next(curproc->fd_idgen);
+	result = fd_tuple_create(filename, flags, 0, &tuple);
+	if (result){
+		return result;
+	}
 
-	// initialize fd_tuple and malloc mem if necessary
-	struct fd_tuple *node = kmalloc(sizeof(struct fd_tuple));
-	
-    node->vn = vn;
-	node->offset = 0;
-	node->counter = 1;
-	node->lock = lock_create("lock");
+	fd = idgen_get_next(curproc->fd_idgen);
 
-	curproc->fdtable[fd]=node;
+	curproc->fdtable[fd]=tuple;
+	*retval = fd;
 
-	return fd;
+	return 0;
 
 }
 

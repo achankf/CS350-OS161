@@ -361,6 +361,11 @@ bool proc_reach_limit(){
 	return idgen_reach(pidgen, PTABLE_SIZE);
 }
 
+bool proc_file_reach_limit(struct proc *proc){
+	KASSERT(proc != NULL);
+	return idgen_reach(proc->fd_idgen, FDTABLE_SIZE);
+}
+
 struct lock *proctable_lock_get(){
 	return proctable_lock;
 }

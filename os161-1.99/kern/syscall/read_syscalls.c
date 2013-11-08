@@ -17,10 +17,13 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	struct iovec iov;
 	struct uio ku;
 
-	if (!proc_valid_fd(curproc, fd)) return EBADF;
 	if (!VALID_USERPTR(buf)) return EFAULT;
 
 	spinlock_acquire(&curproc->p_lock);
+		if (!proc_valid_fd(curproc, fd)){
+			spinlock_release(&curproc->p_lock);
+			return EBADF;
+		}
 		tuple = curproc->fdtable[fd];
 	spinlock_release(&curproc->p_lock);
 

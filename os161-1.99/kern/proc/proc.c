@@ -343,16 +343,19 @@ proc_within_bound(pid_t pid){
 
 bool
 proc_exists(pid_t pid){
+	KASSERT(lock_do_i_hold(proctable_lock));
 	return proc_within_bound(pid) && proctable[pid] != NULL;
 }
 
 struct proc *proc_getby_pid(pid_t pid){
 	KASSERT(proc_exists(pid));
+	KASSERT(lock_do_i_hold(proctable_lock));
 	return proctable[pid];
 }
 
 struct proc *proc_get_parent(struct proc *proc){
 	KASSERT(proc != NULL);
+	KASSERT(lock_do_i_hold(proctable_lock));
 	return proctable[proc->parent];
 }
 
@@ -376,5 +379,6 @@ void proc_destroy_addrspace(struct proc *proc){
 }
 
 bool proc_valid_fd(struct proc *process, int fd){
+	KASSERT(spinlock_do_i_hold(&process->p_lock));
 	return fd >= 0 && fd < FDTABLE_SIZE && process->fdtable[fd] != NULL;
 }

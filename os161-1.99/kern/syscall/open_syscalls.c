@@ -15,7 +15,7 @@ int sys_open(const char *filename, int flags, int *retval)
 	int result, fd;
 	struct fd_tuple *tuple;
 
-	if (filename == NULL) {
+	if (filename == NULL || !VALID_USERPTR(filename)) {
 		return EFAULT;
 	} 
 

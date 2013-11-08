@@ -110,12 +110,11 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 	}
 
 	kprintf("-----------------------------\n");
-	kprintf("Zombie master has cast magic and turned this process into a zombie\n");
-	kprintf("\tFatal user mode\n\ttrap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
-		code, sig, trapcodenames[code], epc, vaddr);
+	kprintf("Gandalf has cast mighty magic and has defeated Sauron's zombie-disguised agents.\n");
 	kprintf("-----------------------------\n");
 
 	sys__exit(-1);
+	panic("Oh No! the One Ring has returned to Sauron!!!!!");
 }
 
 /*

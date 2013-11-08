@@ -110,11 +110,15 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 	}
 
 	kprintf("-----------------------------\n");
-	kprintf("Gandalf has cast mighty magic and has defeated Sauron's zombie-disguised agents.\n");
+	kprintf("Gandalf has defeated Sauron's zombie-disguised agents (user process killed).\n");
+	kprintf("By the way, I'm looking forward into the second movie of the Hobbits.\n");
 	kprintf("-----------------------------\n");
 
 	sys__exit(-1);
 	panic("Oh No! the One Ring has returned to Sauron!!!!!");
+
+	(void) epc;
+	(void) vaddr;
 }
 
 /*

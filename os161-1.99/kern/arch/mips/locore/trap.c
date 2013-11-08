@@ -110,7 +110,8 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 	}
 
 	kprintf("-----------------------------\n");
-	kprintf("Gandalf has defeated Sauron's zombie-disguised agents (user process killed).\n");
+	kprintf("Frodo has escaped from another orcish scout.\n");
+	kprintf("(user process killed, or should I say ``orcish'' process).\n");
 	kprintf("By the way, I'm looking forward into the second movie of the Hobbits.\n");
 	kprintf("-----------------------------\n");
 

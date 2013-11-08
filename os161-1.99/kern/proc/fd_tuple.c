@@ -49,7 +49,7 @@ int fd_tuple_create(const char *filename, int flags, mode_t mode, struct fd_tupl
 }
 
 static void fd_tuple_destroy(struct fd_tuple *tuple){
-	VOP_DECREF(tuple->vn);
+	vfs_close(tuple->vn);
 	lock_destroy(tuple->lock);
 	kfree(tuple);
 }
@@ -66,13 +66,15 @@ void fd_tuple_give_up(struct fd_tuple *tuple){
 	lock_acquire(tuple->lock);
 
 	DEBUG(DB_EXEC, "fd_tuple give_up: count left:%d\n", tuple->counter);
+		KASSERT(tuple->counter > 0);
+		tuple->counter--;
 
-		if (tuple->counter > 0){
-			tuple->counter++;
-		} else {
+		if (tuple->counter == 0){ // need to be check within critical section
+			lock_release(tuple->lock);
 			fd_tuple_destroy(tuple);
+		} else {
+			lock_release(tuple->lock);
 		}
-	lock_release(tuple->lock);
 }
 
 void fd_tuple_bootstrap(){

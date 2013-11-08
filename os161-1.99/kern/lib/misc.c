@@ -63,13 +63,12 @@ strerror(int errcode)
 	return NULL;
 }
 
-bool check_valid_userptr(const_userptr_t ptr){
+int check_valid_userptr(const_userptr_t ptr){
 	char test[1]; // dummy that is used to check for invalid status ptr
 
-	if (ptr == NULL || !VALID_USERPTR(ptr)) return EFAULT;
+	if (ptr == NULL
+		|| !VALID_USERPTR(ptr)
+		|| copyin(ptr, test, 1) != 0) return EFAULT;
 
-	if (copyin(ptr, test, 1) != 0){
-		return EFAULT;
-	}
 	return 0;
 }

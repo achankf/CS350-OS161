@@ -6,7 +6,7 @@
 #include <current.h>
 #include <copyinout.h>
 
-int sys_waitpid(pid_t pid, int *status, int option){
+int sys_waitpid(pid_t pid, int *status, int option, int *retval){
 	struct proc *child;
 	int result;
 
@@ -41,6 +41,7 @@ int sys_waitpid(pid_t pid, int *status, int option){
 			cv_wait(curproc->waitfor_child, proctable_lock_get());
 		}
 		*status = child->retval;
+		*retval = child->pid;
 	lock_release(proctable_lock_get());
 
 	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d ends ----------------\n", sys_getpid(), pid);

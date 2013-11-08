@@ -48,12 +48,13 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 
 	// make a shallow copy of parent's fdtable
 	spinlock_acquire(&curproc->p_lock);
-	for (int i = 0; i < FDTABLE_SIZE; i++){
+	for (int i = 3; i < FDTABLE_SIZE; i++){
 		if (curproc->fdtable[i] == NULL) continue;
 		struct fd_tuple *tuple = curproc->fdtable[i];
 		temp->fdtable[i] = tuple;
 		lock_acquire(tuple->lock);
 			tuple->counter++;
+kprintf("\tcurproc %d at i:%d tuple++ %d\n", curproc->pid, i, tuple->counter);
 		lock_release(tuple->lock);
 	}
 	spinlock_release(&curproc->p_lock);

@@ -184,7 +184,7 @@ void kgets(char *buf, size_t maxbuflen);
 
 void kprintf_bootstrap(void);
 
-bool check_valid_userptr(const_userptr_t);
+int check_valid_userptr(const_userptr_t);
 
 /*
  * Other miscellaneous stuff
@@ -193,7 +193,7 @@ bool check_valid_userptr(const_userptr_t);
 #define DIVROUNDUP(a,b) (((a)+(b)-1)/(b))
 #define ROUNDUP(a,b)    (DIVROUNDUP(a,b)*b)
 
-#define VALID_PTR(ptr) (ptr != NULL && ((uint32_t)ptr % 4 == 0))
+#define VALID_PTR(ptr) (ptr != NULL)
 #define VALID_USERPTR(ptr) (VALID_PTR(ptr) && ((uint32_t)ptr < 0x80000000))
 
 #endif /* _LIB_H_ */

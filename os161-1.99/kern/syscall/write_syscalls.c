@@ -32,7 +32,10 @@ int sys_write(int fd, void *buf, size_t buflen, int *retval) {
 	lock_acquire(tuple->lock);
 
 	const int how = tuple->flags & O_ACCMODE;
-	if (how == O_RDONLY) return EBADF;
+	if (how == O_RDONLY){
+		lock_release(tuple->lock);
+		return EBADF;
+	}
 
 	uio_kinit(&iov,&ku, buf, buflen,tuple->offset,UIO_WRITE);
 	result = VOP_WRITE(tuple->vn, &ku);

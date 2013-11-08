@@ -27,7 +27,10 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	lock_acquire(tuple->lock);
 
 	const int how = tuple->flags & O_ACCMODE;
-	if (how == O_WRONLY) return EBADF;
+	if (how == O_WRONLY){
+		lock_release(tuple->lock);
+		return EBADF;
+	}
 
 	uio_kinit(&iov,&ku, buf, buflen,tuple->offset,UIO_READ);
 	result = VOP_READ(tuple->vn, &ku);

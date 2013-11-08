@@ -348,8 +348,8 @@ proc_exists(pid_t pid){
 }
 
 struct proc *proc_getby_pid(pid_t pid){
-	KASSERT(proc_exists(pid));
 	KASSERT(lock_do_i_hold(proctable_lock));
+	KASSERT(proc_exists(pid));
 	return proctable[pid];
 }
 

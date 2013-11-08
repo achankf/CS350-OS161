@@ -30,6 +30,8 @@
 #include <types.h>
 #include <kern/errmsg.h>
 #include <lib.h>
+#include <copyinout.h>
+#include <kern/errno.h>
 
 /*
  * Like strdup, but calls kmalloc.
@@ -59,4 +61,15 @@ strerror(int errcode)
 	}
 	panic("Invalid error code %d\n", errcode);
 	return NULL;
+}
+
+bool check_valid_userptr(const_userptr_t ptr){
+	char test[1]; // dummy that is used to check for invalid status ptr
+
+	if (ptr == NULL || !VALID_USERPTR(ptr)) return EFAULT;
+
+	if (copyin(ptr, test, 1) != 0){
+		return EFAULT;
+	}
+	return 0;
 }

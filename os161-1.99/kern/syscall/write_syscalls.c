@@ -22,7 +22,8 @@ int sys_write(int fd, void *buf, size_t buflen, int *retval) {
 	struct iovec iov;
 	struct uio ku;
 
-	if (!VALID_USERPTR(buf)) return EFAULT;
+	result = check_valid_userptr((const_userptr_t)buf);
+	if (result) return result;
 
 	spinlock_acquire(&curproc->p_lock);
 		if (!proc_valid_fd(curproc, fd)){

@@ -184,6 +184,8 @@ void kgets(char *buf, size_t maxbuflen);
 
 void kprintf_bootstrap(void);
 
+bool check_valid_userptr(const_userptr_t);
+
 /*
  * Other miscellaneous stuff
  */

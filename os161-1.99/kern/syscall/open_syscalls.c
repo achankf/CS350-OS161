@@ -15,9 +15,8 @@ int sys_open(const char *filename, int flags, int *retval)
 	int result, fd;
 	struct fd_tuple *tuple;
 
-	if (filename == NULL || !VALID_USERPTR(filename)) {
-		return EFAULT;
-	} 
+	result = check_valid_userptr((const_userptr_t)filename);
+	if (result) return result;
 
 	if (proc_file_reach_limit(curproc)){
 		return EMFILE;

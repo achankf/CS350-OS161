@@ -104,8 +104,8 @@ runprogram(char *progname, int argc, char **argv)
 
 	for(int i = 0; i < argc; i++)
 	{
-		kprintf("%d: %p\n", i, (void *)stackptr);
-		kprintf("%s: %d\n", argv[i], strlen(argv[i])); 
+		DEBUG(DB_EXEC,"%d: %p\n", i, (void *)stackptr);
+		DEBUG(DB_EXEC,"%s: %d\n", argv[i], strlen(argv[i])); 
 		int length = strlen(argv[i]);
 		stackptr -= (length+1);
 		temp[i] = stackptr;
@@ -122,11 +122,11 @@ runprogram(char *progname, int argc, char **argv)
 		stackptr += sizeof(char*);
 	}
 
-	kprintf("reached here\n");
+	DEBUG(DB_EXEC,"reached here\n");
 
 	*(char**)stackptr = (vaddr_t) NULL;
 
-	kprintf("u_addr_start: %p\n", (void *)u_addr_start);
+	DEBUG(DB_EXEC, "u_addr_start: %p\n", (void *)u_addr_start);
 
 	/* Warp to user mode. */
 	enter_new_process(argc /*argc*/, (userptr_t) u_addr_start /*userspace addr of argv*/, u_addr_start, entrypoint);

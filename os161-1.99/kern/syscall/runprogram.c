@@ -53,7 +53,7 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
-runprogram(char *progname, int argc, char **argv)
+runprogram(char *progname, int argc, char **argv, struct addrspace *old_as, bool freeA)
 {
 	struct addrspace *as;
 	struct vnode *v;
@@ -122,11 +122,22 @@ runprogram(char *progname, int argc, char **argv)
 		stackptr += sizeof(char*);
 	}
 
-	DEBUG(DB_EXEC,"reached here\n");
-
 	*(char**)stackptr = (vaddr_t) NULL;
 
 	DEBUG(DB_EXEC, "u_addr_start: %p\n", (void *)u_addr_start);
+
+	if(freeA)
+	{
+		int i = 0;
+		while(argv[i] != NULL)
+		{
+			kfree(argv[i]);
+			i++;
+		}
+	}
+
+	if(old_as != NULL)
+		as_destroy(old_as);
 
 	/* Warp to user mode. */
 	enter_new_process(argc /*argc*/, (userptr_t) u_addr_start /*userspace addr of argv*/, u_addr_start, entrypoint);

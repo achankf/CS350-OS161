@@ -9,6 +9,7 @@ struct fd_tuple {
 	struct vnode *vn;
 	off_t offset;
 	int counter;
+	int flags;
 	struct lock *lock; // sync between reads and writes
 };
 

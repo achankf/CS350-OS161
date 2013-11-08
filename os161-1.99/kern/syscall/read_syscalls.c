@@ -8,6 +8,8 @@
 #include <thread.h>
 #include <uio.h>
 #include <proc.h>
+#include <kern/errno.h>
+#include <kern/fcntl.h>
 
 int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	int result;
@@ -15,11 +17,17 @@ int sys_read(int fd, void *buf, size_t buflen, int *retval) {
 	struct iovec iov;
 	struct uio ku;
 
+	if (!proc_valid_fd(curproc, fd)) return EBADF;
+	if (!VALID_USERPTR(buf)) return EFAULT;
+
 	spinlock_acquire(&curproc->p_lock);
 		tuple = curproc->fdtable[fd];
 	spinlock_release(&curproc->p_lock);
 
 	lock_acquire(tuple->lock);
+
+	const int how = tuple->flags & O_ACCMODE;
+	if (how == O_WRONLY) return EBADF;
 
 	uio_kinit(&iov,&ku, buf, buflen,tuple->offset,UIO_READ);
 	result = VOP_READ(tuple->vn, &ku);

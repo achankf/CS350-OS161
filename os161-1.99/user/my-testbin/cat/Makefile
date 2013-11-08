@@ -2,7 +2,7 @@
 TOP=../../..
 .include "$(TOP)/mk/os161.config.mk"
 
-PROG=openread
+PROG=cat
 SRCS=$(PROG).c
 
 BINDIR=/my-testbin

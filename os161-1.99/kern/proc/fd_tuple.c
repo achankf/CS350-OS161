@@ -41,6 +41,7 @@ int fd_tuple_create(const char *filename, int flags, mode_t mode, struct fd_tupl
 	node->vn = vn;
 	node->offset = 0;
 	node->counter = 1;
+	node->flags = flags;
 
 	*rettuple = node;
 

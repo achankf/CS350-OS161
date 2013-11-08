@@ -13,11 +13,9 @@ static int test_open_read(const char *path){
 	int err;
 
 
-	if (fd == -1){
+	if (fd < 0){
 		return 1;
 	}
-
-	printf("fd generated:%d\n", fd);
 
  	//while ((err = read(fd, dest, BUF_SIZE))){
 	for(;;){

@@ -4,18 +4,27 @@
 #include <syscall.h>
 #include <proc.h>
 #include <current.h>
+#include <copyinout.h>
 
 int sys_waitpid(pid_t pid, int *status, int option){
 	struct proc *child;
+	int result;
+	char buf[1]; // dummy that is used to check for invalid status ptr
 
 	DEBUG(DB_EXEC, "---------------- waitpid of %d on %d begins ----------------\n",sys_getpid(),pid);
 
 	if (option != 0){
 		return EINVAL;
 	}
+
 	DEBUG(DB_EXEC, "Test: %d for status pointer %p\n",!VALID_USERPTR(status), status);
-	if (!VALID_USERPTR(status)){
+	if (status == NULL || !VALID_USERPTR(status)){
 		return EFAULT;
+	}
+
+	result = copyin((const_userptr_t)status, buf, 1);
+	if (result){
+		return result;
 	}
 
 	lock_acquire(proctable_lock_get());

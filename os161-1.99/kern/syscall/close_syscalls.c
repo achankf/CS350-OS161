@@ -11,9 +11,13 @@
 int sys_close(int fd)
 {
 
-	if (!proc_valid_fd(curproc, fd)) return EBADF;
-
 	spinlock_acquire(&curproc->p_lock);
+
+		if (!proc_valid_fd(curproc, fd)){
+			spinlock_release(&curproc->p_lock);
+			return EBADF;
+		}
+
 		fd_tuple_give_up(curproc->fdtable[fd]);
 		curproc->fdtable[fd] = NULL;
 	spinlock_release(&curproc->p_lock);

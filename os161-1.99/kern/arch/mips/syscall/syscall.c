@@ -112,7 +112,16 @@ syscall(struct trapframe *tf)
 			sys__exit(tf->tf_a0);
 			panic("sys_exit: the thread must be exited or zombiefied");
 		case SYS_write:
-			err = sys_write(tf->tf_a0, (userptr_t)tf->tf_a1, tf->tf_a2);
+			err = sys_write(tf->tf_a0, (void*)tf->tf_a1, tf->tf_a2, &retval);
+			break;
+		case SYS_read:
+			err = sys_read(tf->tf_a0,(void *) tf->tf_a1,tf->tf_a2, &retval);
+			break;
+		case SYS_open:
+			err = sys_open((char *) tf->tf_a0,tf->tf_a1, &retval);
+			break;
+		case SYS_close:
+			err = sys_close(tf->tf_a0);
 			break;
 		case SYS_fork:
 			// store the child's PID in retval
@@ -122,8 +131,8 @@ syscall(struct trapframe *tf)
 			err = sys_waitpid(tf->tf_a0, (int *) tf->tf_a1, tf->tf_a2);
 			break;
 		case SYS_getpid:
-			err = 0;
-			retval = sys_getpid();
+			err = 0; // always successful
+			retval = sys_getpid(); 
 			break;
 		case SYS_execv:
 			err = sys_execv((char *)tf->tf_a0, (char **)tf->tf_a1);
@@ -146,7 +155,7 @@ syscall(struct trapframe *tf)
 	}
 	else {
 		/* Success. */
-		tf->tf_v0 = retval;
+        tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
 	}
 	

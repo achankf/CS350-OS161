@@ -4,23 +4,36 @@
 #include <vfs.h>
 #include <vnode.h>
 #include <thread.h>
+#include <proc.h>
 #include <current.h>
+#include <limits.h>
+#include <kern/errno.h>
 
-int sys_open(const char *filename, int flags, int mode);
+int sys_open(const char *filename, int flags, int *retval)
 {
-	struct vnode ** vn;
 
-	// vfs_open(char *path, int openflags, mode_t mode, struct vnode **ret)
-	vfs_open(filename, flags, mode,vn)
+	int result, fd;
+	struct fd_tuple *tuple;
 
-	int result = idgen_get_next(curproc->fd_idgen);
+	if (filename == NULL || !VALID_USERPTR(filename)) {
+		return EFAULT;
+	} 
 
-	struct fd_tuple *node;
-	node->vn = vn;
+	if (proc_file_reach_limit(curproc)){
+		return EMFILE;
+	}
 
-	curproc->fdtable[result]=node;
+	result = fd_tuple_create(filename, flags, 0, &tuple);
+	if (result){
+		return result;
+	}
 
-	return result;
+	fd = idgen_get_next(curproc->fd_idgen);
+
+	curproc->fdtable[fd]=tuple;
+	*retval = fd;
+
+	return 0;
 
 }
 

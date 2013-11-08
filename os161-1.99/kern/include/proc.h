@@ -40,7 +40,11 @@
 #include <thread.h> /* required for struct threadarray */
 #include <id_generator.h>
 #include <queue.h>
+#include <limits.h>
 #include <synch.h>
+#include <fd_tuple.h>
+
+#define PTABLE_SIZE 100
 
 struct addrspace;
 struct vnode;
@@ -48,14 +52,6 @@ struct vnode;
 /*
  * Process structure.
  */
-
-struct fd_tuple {
-	struct vnode *vn;
-	size_t offset;
-
-};
-
-#define FDTABLE_SIZE 256 // fixed size of fd table
 
 struct proc {
 	char *p_name;			/* Name of this process */
@@ -68,16 +64,16 @@ struct proc {
 	/* VFS */
 	struct vnode *p_cwd;		/* current working directory */
 
+	struct fd_tuple *fdtable[FDTABLE_SIZE];
+	struct id_generator *fd_idgen;
+
+	// synchronized by proctable_lock
 	pid_t pid;
 	pid_t parent;
 	struct cv *waitfor_child;
 	bool zombie;
 	int retval;
 	struct queue *children;
-
-	struct fd_tuple *fdtable[FDTABLE_SIZE];
-	struct id_generator *fd_idgen;
-
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
@@ -111,16 +107,18 @@ struct proc *proc_getby_pid(pid_t pid);
 
 // check whether the pid exists
 bool proc_exists(pid_t pid);
+bool proc_valid_fd(struct proc *process, int fd);
 
 struct proc *proc_get_parent(struct proc *);
 
 // wait for the target process to die, and then destroy it
 int proc_wait_and_exorcise(pid_t pid, int *retval);
 
-bool proc_reach_limit(void);
-
 struct lock *proctable_lock_get(void);
 
 void proc_destroy_addrspace(struct proc *);
+
+bool proc_reach_limit(void);
+bool proc_file_reach_limit(struct proc *);
 
 #endif /* _PROC_H_ */

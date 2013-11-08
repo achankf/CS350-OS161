@@ -50,8 +50,8 @@
 #include <array.h>
 #include <id_generator.h>
 #include <syscall.h>
-
-#define PTABLE_SIZE 512
+#include <fd_tuple.h>
+#include <kern/unistd.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -71,42 +71,43 @@ proc_create(const char *name)
 {
 	struct proc *proc;
 
+	// maximum is not reached
+	KASSERT(!proc_reach_limit());
+
 	proc = kmalloc(sizeof(*proc));
-	if (proc == NULL) {
-		return NULL;
-	}
+	if (proc == NULL) return NULL;
+
+	/*
+	 * WARNING: USING GOTO TO SIMPLIFY ERROR DEALLOCATIONS
+	 * GOTO ROCKS!!!!!!!!!!!!!!!!!!!!!!!!!!
+	 */
 
 	proc->waitfor_child = cv_create("");
-	if (proc->waitfor_child == NULL){
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->waitfor_child == NULL) goto ALLOC_CV_FAILURE;
+
 	proc->p_name = kstrdup(name);
-	if (proc->p_name == NULL) {
-		cv_destroy(proc->waitfor_child);
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->p_name == NULL) goto ALLOC_P_NAME_FAILURE;
 
 	proc->fd_idgen = idgen_create(3);
-	if (proc->fd_idgen == NULL){
-		cv_destroy(proc->waitfor_child);
-		kfree(proc->p_name);
-		kfree(proc);
-		return NULL;
-	}
+	if (proc->fd_idgen == NULL) goto ALLOC_FD_IDGEN_FAILURE;
 
 	proc->children = q_create(10);
+	if (proc->children == NULL) goto ALLOC_PROC_CHILDREN_FAILURE;
+
+	goto END_OF_ALLOCATION;
+
+ALLOC_PROC_CHILDREN_FAILURE:
+	kfree(proc->fd_idgen);
+ALLOC_FD_IDGEN_FAILURE:
+	kfree(proc->p_name);
+ALLOC_P_NAME_FAILURE:
+	cv_destroy(proc->waitfor_child);
+ALLOC_CV_FAILURE:
+	kfree(proc);
+	return NULL;
+END_OF_ALLOCATION:
 
 	proc->pid = idgen_get_next(pidgen);
-	if (proc->pid >= PTABLE_SIZE){ // no need to recover pid
-		cv_destroy(proc->waitfor_child);
-		kfree(proc->fd_idgen);
-		kfree(proc->p_name);
-		kfree(proc);
-		return NULL;
-	}
-
 	threadarray_init(&proc->p_threads);
 	spinlock_init(&proc->p_lock);
 
@@ -115,6 +116,11 @@ proc_create(const char *name)
 
 	/* VFS fields */
 	proc->p_cwd = NULL;
+
+	bzero(proc->fdtable, sizeof(struct fd_tuple*) * FDTABLE_SIZE);
+	proc->fdtable[STDIN_FILENO] = fd_tuple_stdin();
+	proc->fdtable[STDOUT_FILENO] = fd_tuple_stdout();
+	proc->fdtable[STDERR_FILENO] = fd_tuple_stdout();
 
 	proctable[proc->pid] = proc;
 
@@ -147,6 +153,7 @@ proc_destroy(struct proc *proc)
 	// clean link on the proctable
 	proctable[proc->pid] = NULL;
 
+	// failed to allocate memory
 	if (proc->children == NULL) goto SKIP_KILLING_CHILDREN;
 
 	while (!q_empty(proc->children)){
@@ -185,13 +192,15 @@ proc_bootstrap(void)
 	pidgen = idgen_create(1);
 	proctable_lock = lock_create("proctable lock");
 	bzero(proctable, sizeof(struct proc*) * PTABLE_SIZE);
+	
+
 	kproc = proc_create("[kernel]");
 	if (kproc == NULL) {
 		panic("proc_create for kproc failed\n");
 	}
-#if OPT_A1
-	kprintf("kproc = %p\n", kproc);
-#endif
+	#if OPT_A1
+		kprintf("kproc = %p\n", kproc);
+	#endif
 }
 
 /*
@@ -334,21 +343,29 @@ proc_within_bound(pid_t pid){
 
 bool
 proc_exists(pid_t pid){
+	KASSERT(lock_do_i_hold(proctable_lock));
 	return proc_within_bound(pid) && proctable[pid] != NULL;
 }
 
 struct proc *proc_getby_pid(pid_t pid){
+	KASSERT(lock_do_i_hold(proctable_lock));
 	KASSERT(proc_exists(pid));
 	return proctable[pid];
 }
 
 struct proc *proc_get_parent(struct proc *proc){
 	KASSERT(proc != NULL);
+	KASSERT(lock_do_i_hold(proctable_lock));
 	return proctable[proc->parent];
 }
 
 bool proc_reach_limit(){
 	return idgen_reach(pidgen, PTABLE_SIZE);
+}
+
+bool proc_file_reach_limit(struct proc *proc){
+	KASSERT(proc != NULL);
+	return idgen_reach(proc->fd_idgen, FDTABLE_SIZE);
 }
 
 struct lock *proctable_lock_get(){
@@ -359,4 +376,9 @@ void proc_destroy_addrspace(struct proc *proc){
 	if (proc->p_addrspace) {
 		as_destroy(proc_setas(proc,NULL));
 	}
+}
+
+bool proc_valid_fd(struct proc *process, int fd){
+	KASSERT(spinlock_do_i_hold(&process->p_lock));
+	return fd >= 0 && fd < FDTABLE_SIZE && process->fdtable[fd] != NULL;
 }

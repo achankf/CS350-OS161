@@ -13,21 +13,27 @@ int sys_waitpid(pid_t pid, int *status, int option){
 	if (option != 0){
 		return EINVAL;
 	}
-	DEBUG(DB_EXEC, "Test 1: %d\n",!proc_exists(pid));
-	if (!proc_exists(pid)){
-		return ESRCH;
-	}
-	DEBUG(DB_EXEC,"Test 2: %d %d\n",proc_getby_pid(pid)->parent, curproc->pid);
-	if (curproc->pid != proc_getby_pid(pid)->parent){
-		return ECHILD;
-	}
-	DEBUG(DB_EXEC, "Test 3: %d for status pointer %p\n",!VALID_USERPTR(status), status);
+	DEBUG(DB_EXEC, "Test: %d for status pointer %p\n",!VALID_USERPTR(status), status);
 	if (!VALID_USERPTR(status)){
 		return EFAULT;
 	}
-	DEBUG(DB_EXEC,"All precondition okay\n");
 
 	lock_acquire(proctable_lock_get());
+
+		DEBUG(DB_EXEC, "Test: %d\n",!proc_exists(pid));
+		if (!proc_exists(pid)){
+			lock_release(proctable_lock_get());
+			return ESRCH;
+		}
+
+		DEBUG(DB_EXEC,"Test: %d %d\n",proc_getby_pid(pid)->parent, curproc->pid);
+		if (curproc->pid != proc_getby_pid(pid)->parent){
+			lock_release(proctable_lock_get());
+			return ECHILD;
+		}
+
+		DEBUG(DB_EXEC,"All precondition okay\n");
+
 		child = proc_getby_pid(pid);
 		while(!child->zombie){
 			cv_wait(curproc->waitfor_child, proctable_lock_get());

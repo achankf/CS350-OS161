@@ -17,6 +17,8 @@ int sys_waitpid(pid_t pid, int *status, int option, int *retval){
 	}
 
 	DEBUG(DB_EXEC, "Test: %d for status pointer %p\n",!VALID_USERPTR(status), status);
+
+	if (PTR_ALIGNED(status)) return EFAULT;
 	result = check_valid_userptr((const_userptr_t)status);
 	if (result) return result;
 

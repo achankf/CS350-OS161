@@ -194,6 +194,7 @@ int check_valid_userptr(const_userptr_t);
 #define ROUNDUP(a,b)    (DIVROUNDUP(a,b)*b)
 
 #define VALID_PTR(ptr) (ptr != NULL)
+#define PTR_ALIGNED(ptr) ((unsigned long)ptr % 4)
 #define VALID_USERPTR(ptr) (VALID_PTR(ptr) && ((uint32_t)ptr < 0x80000000))
 
 #endif /* _LIB_H_ */

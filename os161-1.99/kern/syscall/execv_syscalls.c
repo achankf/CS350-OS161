@@ -38,7 +38,6 @@ int sys_execv(const char *program, char **args)
 	KASSERT(old_as != NULL);
 
 
-	kprintf("\n execv hajimaru yo\n");
 /*
 	result = copyin((const_userptr_t) args, kargs, (sizeof (char**)));
 	if(result)
@@ -50,7 +49,7 @@ int sys_execv(const char *program, char **args)
 */	result = copyinstr((const_userptr_t)program, kprogram, 256, &got); 
 	if(result)
 	{
-		kprintf("copyinstr program name failed\n");
+		DEBUG(DB_EXEC, "copyinstr program name failed\n");
 		return result;
 	}
 	if (got == 256) // we don't know how long the original was
@@ -63,7 +62,7 @@ int sys_execv(const char *program, char **args)
 		result = copyin((const_userptr_t) (args + i), &arg_ptr, sizeof(char*));
 		if (result)
 		{
-			kprintf("pointer to arg %d was bad\n", i);
+			DEBUG(DB_EXEC,"pointer to arg %d was bad\n", i);
 			break;
 		}
 
@@ -74,7 +73,7 @@ int sys_execv(const char *program, char **args)
 		char tmp_arg[256];
 		result = copyinstr(arg_ptr, tmp_arg, 256, &got);
 		if (result) {
-			kprintf("couldn't copy in arg %d\n", i);
+			DEBUG(DB_EXEC,"couldn't copy in arg %d\n", i);
 			break;
 		}
 	
@@ -82,7 +81,7 @@ int sys_execv(const char *program, char **args)
 		kargs[i] = kmalloc(length+1);
 		if (kargs[i] == NULL)
 		{
-			kprintf("couldn't kmalloc\n");
+			DEBUG(DB_EXEC,"couldn't kmalloc\n");
 			result = ENOMEM;
 			break;
 		}
@@ -107,7 +106,7 @@ int sys_execv(const char *program, char **args)
 	curproc_setas(old_as);
 	as_activate();
 
-	kprintf("runprogram failed\n");
+	DEBUG(DB_EXEC,"runprogram failed\n");
 	return result;
 }
 

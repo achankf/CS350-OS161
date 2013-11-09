@@ -7,6 +7,7 @@
 #include <current.h>
 #include <addrspace.h>
 #include <fd_tuple.h>
+#include <kern/wait.h>
 
 void sys__exit(int exit_code)
 {
@@ -33,7 +34,7 @@ void sys__exit(int exit_code)
 
 	struct lock *proctable_lock = proctable_lock_get();
 
-	DEBUG(DB_EXEC,"proc_i_died: pid:%d exit:%d\n", sys_getpid(), exit_code);
+	DEBUG(DB_EXEC,"exit: pid:%d exit:%d\n", sys_getpid(), exit_code);
 
 	// make sure either children die or parent dies -- not both
 	lock_acquire(proctable_lock);
@@ -44,7 +45,8 @@ void sys__exit(int exit_code)
 	if (parent != NULL){
 		// ask parent to kill me
 		curproc->zombie = true;
-		curproc->retval = exit_code;
+		curproc->retval = _MKWAIT_EXIT(exit_code);
+kprintf(" RET VALUE %d \n", curproc->retval);
 		cv_signal(parent->waitfor_child, proctable_lock);
 		lock_release(proctable_lock);
 		thread_exit();

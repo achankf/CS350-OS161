@@ -777,6 +777,7 @@ void
 thread_exit(void)
 {
 	struct thread *cur;
+	struct proc *curproc_bak = curproc;
 
 	cur = curthread;
 
@@ -792,6 +793,13 @@ thread_exit(void)
 	/* Check the stack guard band. */
 	thread_checkstack(cur);
 
+	// enable kernal menu to clean up invalid process
+	lock_acquire(proctable_lock_get());
+		curproc_bak->zombie = true;
+		struct proc *kproc = proc_getby_pid(1);
+		cv_signal(kproc->waitfor_child, proctable_lock_get());
+	lock_release(proctable_lock_get());
+	
 	thread_force_zombie();
 }
 

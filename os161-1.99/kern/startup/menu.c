@@ -152,6 +152,8 @@ common_prog(int nargs, char **args)
 		return ENOMEM;
 	}
 
+	proc->parent = curproc->pid;
+
 	result = thread_fork(args[0] /* thread name */,
 			proc /* new process */,
 			cmd_progthread /* thread function */,
@@ -165,7 +167,6 @@ common_prog(int nargs, char **args)
 	}
 
 	lock_acquire(proctable_lock_get());
-		proc->parent = curproc->pid;
 		while(!proc->zombie){
 			cv_wait(curproc->waitfor_child, proctable_lock_get());
 		}

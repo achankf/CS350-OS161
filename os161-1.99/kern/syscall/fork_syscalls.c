@@ -54,7 +54,6 @@ int sys_fork(struct trapframe *tf, pid_t *ret){
 		temp->fdtable[i] = tuple;
 		lock_acquire(tuple->lock);
 			tuple->counter++;
-kprintf("\tcurproc %d at i:%d tuple++ %d\n", curproc->pid, i, tuple->counter);
 		lock_release(tuple->lock);
 	}
 	spinlock_release(&curproc->p_lock);

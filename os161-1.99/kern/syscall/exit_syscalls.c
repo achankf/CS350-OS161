@@ -46,7 +46,6 @@ void sys__exit(int exit_code)
 		// ask parent to kill me
 		curproc->zombie = true;
 		curproc->retval = _MKWAIT_EXIT(exit_code);
-kprintf(" RET VALUE %d \n", curproc->retval);
 		cv_signal(parent->waitfor_child, proctable_lock);
 		lock_release(proctable_lock);
 		thread_exit();

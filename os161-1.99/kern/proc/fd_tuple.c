@@ -14,6 +14,7 @@ int fd_tuple_create(const char *filename, int flags, mode_t mode, struct fd_tupl
 	struct fd_tuple *node = kmalloc(sizeof(struct fd_tuple));
 
 	if (node == NULL) return ENOMEM;
+	if (flags & O_APPEND) return EINVAL;
 
 	node->lock = lock_create("");
 

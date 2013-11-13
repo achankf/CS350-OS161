@@ -44,6 +44,8 @@
 #define VM_FAULT_WRITE       1    /* A write was attempted */
 #define VM_FAULT_READONLY    2    /* A write to a readonly page was attempted*/
 
+// temporary solution
+#define DUMBVM_STACKPAGES    12
 
 /* Initialization function */
 void vm_bootstrap(void);
@@ -59,5 +61,6 @@ void free_kpages(vaddr_t addr);
 void vm_tlbshootdown_all(void);
 void vm_tlbshootdown(const struct tlbshootdown *);
 
+paddr_t getppages(unsigned long npages);
 
 #endif /* _VM_H_ */

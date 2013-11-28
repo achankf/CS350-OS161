@@ -78,6 +78,15 @@ vm_tlbshootdown(const struct tlbshootdown *ts)
 	panic("Not implemented yet.\n");
 }
 
+static int tlb_get_rr_victim()
+{
+	int victim;
+	static unsigned int next_victim = 0;
+	victim = next_victim;
+	next_victim = (next_victim + 1) % NUM_TLB;
+	return victim;
+}
+
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
@@ -163,18 +172,18 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-	for (i=0; i<NUM_TLB; i++) {
-		tlb_read(&ehi, &elo, i);
-		if (elo & TLBLO_VALID) {
-			continue;
-		}
-		ehi = faultaddress;
-		elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-		DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
-		tlb_write(ehi, elo, i);
-		splx(spl);
-		return 0;
+	
+	i = tlb_get_rr_victim();
+	tlb_read(&ehi, &elo, i);
+	if (elo & TLBLO_VALID) {
+		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
+	ehi = faultaddress;
+	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+	DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+	tlb_write(ehi, elo, i);
+	splx(spl);
+	return 0;	
 
 	kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
 	splx(spl);

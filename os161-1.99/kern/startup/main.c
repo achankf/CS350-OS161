@@ -52,6 +52,7 @@
 #include "autoconf.h"  // for pseudoconfig
 #include "opt-A0.h"
 #include <fd_tuple.h>
+#include <uw-vmstats.h> // for tracking vm stats
 
 /*
  * These two pieces of data are maintained by the makefiles and build system.
@@ -136,6 +137,8 @@ boot(void)
 	   hello();
 	#endif /* OPT_A0 */	
 
+    vmstats_init();
+
 	/*
 	 * Make sure various things aren't screwed up.
 	 */
@@ -150,9 +153,10 @@ static
 void
 shutdown(void)
 {
-
 	kprintf("Shutting down.\n");
-	
+    vmstats_print();
+
+
 	vfs_clearbootfs();
 	vfs_clearcurdir();
 	vfs_unmountall();

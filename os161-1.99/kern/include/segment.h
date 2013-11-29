@@ -9,8 +9,7 @@ enum {
 
 struct page_entry{
 	int vpn;
-	int swap;
-	bool valid, dirty;
+	bool swap;
 };
 
 struct segment{

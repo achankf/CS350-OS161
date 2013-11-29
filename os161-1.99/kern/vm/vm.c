@@ -19,33 +19,11 @@
 #include <uw-vmstats.h>
 #include <coremap.h>
 
-/*
- * Wrap rma_stealmem in a spinlock.
- */
-static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
-
 void
 vm_bootstrap(void)
 {
 	/* May need to add code. */
 }
-
-#if 1 
-/* You will need to call this at some point */
-paddr_t
-getppages(unsigned long npages)
-{
-   /* Adapt code form dumbvm or implement something new */
-	paddr_t addr;
-
-	spinlock_acquire(&stealmem_lock);
-
-	addr = ram_stealmem(npages);
-	
-	spinlock_release(&stealmem_lock);
-	return addr;
-}
-#endif
 
 /* Allocate/free some kernel-space virtual pages */
 vaddr_t 
@@ -65,6 +43,7 @@ void
 free_kpages(vaddr_t addr)
 {
 	/* nothing - leak the memory. */
+	DEBUG(DB_VM,"freeing %p\n", (void*) addr);
 
 	(void)addr;
 }

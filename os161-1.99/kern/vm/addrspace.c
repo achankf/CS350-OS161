@@ -38,17 +38,6 @@
 #include <proc.h>
 #endif
 
-// dumvm codes
-
-#if 0
-static
-void
-as_zero_region(paddr_t paddr, unsigned npages)
-{
-	bzero((void *)PADDR_TO_KVADDR(paddr), npages * PAGE_SIZE);
-}
-#endif
-
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
  * assignment, this file is not compiled or linked or in any way
@@ -248,12 +237,8 @@ as_prepare_load(struct addrspace *as)
 int
 as_complete_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
-
-	(void)as;
-	return 0;
+	// initialize stack segment
+	return seg_init(&as->segs[STACK], USERSTACK, DUMBVM_STACKPAGES);
 }
 
 int

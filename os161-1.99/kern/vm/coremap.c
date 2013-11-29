@@ -107,6 +107,8 @@ coremap_init()
 	int coremap_end_size = coremap_size / PAGE_SIZE + 1;
 	coremap_ptr = (struct coremap_entry*) PADDR_TO_KVADDR(ram_stealmem(coremap_end_size));
 	ram_getsize(&lo, &hi);
+
+	// finalize the memory pool
 	base = lo;
 	num_frames = (hi - lo) / PAGE_SIZE;
 	coremap_size = num_of_frames * sizeof(struct coremap_entry);

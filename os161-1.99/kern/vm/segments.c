@@ -9,6 +9,7 @@ bool seg_is_inited(struct segment *seg){
 int seg_init(struct segment *seg, int vbase, int npages){
 	seg->pagetable = kmalloc(npages * sizeof(struct page_entry));
 	if (seg->pagetable == NULL) return ENOMEM;
+	DEBUG(DB_VM, "seg_init: %x, %d\n", vbase, npages);
 	seg->vbase = vbase;
 	seg->npages = npages;
 	return 0;

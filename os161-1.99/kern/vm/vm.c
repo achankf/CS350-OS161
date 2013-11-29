@@ -17,6 +17,7 @@
 #include <current.h>
 #include <spinlock.h>
 #include <uw-vmstats.h>
+#include <coremap.h>
 
 /*
  * Wrap rma_stealmem in a spinlock.
@@ -50,12 +51,14 @@ getppages(unsigned long npages)
 vaddr_t 
 alloc_kpages(int npages)
 {
-	paddr_t pa;
-	pa = getppages(npages);
-	if (pa==0) {
-		return 0;
-	}
-	return PADDR_TO_KVADDR(pa);
+	int frame;
+	int rv;
+	rv = kframe_alloc(&frame, 0, npages);
+
+	DEBUG(DB_VM, "Getting %x\n", frame_to_paddr(frame));
+
+	if (rv > 0) return 0;
+	return PADDR_TO_KVADDR(frame_to_paddr(frame));
 }
 
 void 
@@ -93,7 +96,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 {
   /* Adapt code form dumbvm or implement something new */
 
-	vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
+	//vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
 	int i;
 	uint32_t ehi, elo;
@@ -133,24 +136,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		return EFAULT;
 	}
 
-	/* Assert that the address space has been set up properly. */
-	KASSERT(as->as_vbase1 != 0);
-	KASSERT(as->as_pbase1 != 0);
-	KASSERT(as->as_npages1 != 0);
-	KASSERT(as->as_vbase2 != 0);
-	KASSERT(as->as_pbase2 != 0);
-	KASSERT(as->as_npages2 != 0);
-	KASSERT(as->as_stackpbase != 0);
-	KASSERT((as->as_vbase1 & PAGE_FRAME) == as->as_vbase1);
-	KASSERT((as->as_pbase1 & PAGE_FRAME) == as->as_pbase1);
-	KASSERT((as->as_vbase2 & PAGE_FRAME) == as->as_vbase2);
-	KASSERT((as->as_pbase2 & PAGE_FRAME) == as->as_pbase2);
-	KASSERT((as->as_stackpbase & PAGE_FRAME) == as->as_stackpbase);
+	// check the consistency of the address space
+	as_okay(as);
 
-	vbase1 = as->as_vbase1;
-	vtop1 = vbase1 + as->as_npages1 * PAGE_SIZE;
-	vbase2 = as->as_vbase2;
-	vtop2 = vbase2 + as->as_npages2 * PAGE_SIZE;
+#if 0
+	vbase1 = as->segs[0].vbase;
+	vtop1 = vbase1 + as->segs[1].npages * PAGE_SIZE;
+	vbase2 = as->segs[1].vbase;
+	vtop2 = vbase2 + as->segs[1].npages * PAGE_SIZE;
 	stackbase = USERSTACK - DUMBVM_STACKPAGES * PAGE_SIZE;
 	stacktop = USERSTACK;
 
@@ -166,6 +159,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	else {
 		return EFAULT;
 	}
+#endif
 
 	/* make sure it's page-aligned */
 	KASSERT((paddr & PAGE_FRAME) == paddr);

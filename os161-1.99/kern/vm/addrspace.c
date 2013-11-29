@@ -40,12 +40,14 @@
 
 // dumvm codes
 
+#if 0
 static
 void
 as_zero_region(paddr_t paddr, unsigned npages)
 {
 	bzero((void *)PADDR_TO_KVADDR(paddr), npages * PAGE_SIZE);
 }
+#endif
 
 /*
  * Note! If OPT_DUMBVM is set, as is the case until you start the VM
@@ -63,20 +65,16 @@ as_create(void)
 		return NULL;
 	}
 
-	as->as_vbase1 = 0;
-	as->as_pbase1 = 0;
-	as->as_npages1 = 0;
-	as->as_vbase2 = 0;
-	as->as_pbase2 = 0;
-	as->as_npages2 = 0;
-	as->as_stackpbase = 0;
-
+	bzero(as, sizeof(struct addrspace));
 	return as;
 }
 
 int
 as_copy(struct addrspace *old, struct addrspace **ret)
 {
+	(void)old;
+	(void)ret;
+
 	struct addrspace *newas;
 
 	newas = as_create();
@@ -84,9 +82,7 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		return ENOMEM;
 	}
 
-	/*
-	 * Write this.
-	 */
+#if 0
 	newas->as_vbase1 = old->as_vbase1;
 	newas->as_npages1 = old->as_npages1;
 	newas->as_vbase2 = old->as_vbase2;
@@ -115,12 +111,16 @@ as_copy(struct addrspace *old, struct addrspace **ret)
 		DUMBVM_STACKPAGES*PAGE_SIZE);
 	
 	*ret = newas;
+#endif
 	return 0;
 }
 
 void
 as_destroy(struct addrspace *as)
 {
+	for (int i = 0; i < NUM_SEGS; i++){
+		seg_cleanup(&as->segs[i]);
+	}
 	kfree(as);
 }
 
@@ -199,16 +199,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 	(void)writeable;
 	(void)executable;
 
-	if (as->as_vbase1 == 0) {
-		as->as_vbase1 = vaddr;
-		as->as_npages1 = npages;
-		return 0;
-	}
-
-	if (as->as_vbase2 == 0) {
-		as->as_vbase2 = vaddr;
-		as->as_npages2 = npages;
-		return 0;
+	for (int i = 0; i < NUM_SEGS - 1; i++){ // -1 because stack is separate
+		if (seg_is_inited(&as->segs[i])) continue;
+		return seg_init(&as->segs[i], vaddr & PAGE_FRAME, npages);
 	}
 
 	/*
@@ -222,10 +215,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 int
 as_prepare_load(struct addrspace *as)
 {
-	/*
-	 * Write this.
-	 */
+	(void)as;
 
+#if 0
 	KASSERT(as->as_pbase1 == 0);
 	KASSERT(as->as_pbase2 == 0);
 	KASSERT(as->as_stackpbase == 0);
@@ -248,6 +240,7 @@ as_prepare_load(struct addrspace *as)
 	as_zero_region(as->as_pbase1, as->as_npages1);
 	as_zero_region(as->as_pbase2, as->as_npages2);
 	as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
+#endif
 
 	return 0;
 }
@@ -266,11 +259,8 @@ as_complete_load(struct addrspace *as)
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	/*
-	 * Write this.
-	 */
-
-	KASSERT(as->as_stackpbase != 0);
+	//KASSERT(as->segs[STACK].pbase != 0); // TODO test physical address
+	(void)as;
 
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
@@ -278,3 +268,9 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	return 0;
 }
 
+bool as_okay(struct addrspace *as){
+	// TODO
+	(void) as;
+	KASSERT(0);
+	return false;
+}

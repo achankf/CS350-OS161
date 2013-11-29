@@ -49,6 +49,7 @@
 #include <syscall.h>
 #include <test.h>
 #include <version.h>
+#include <coremap.h>
 #include "autoconf.h"  // for pseudoconfig
 #include "opt-A0.h"
 #include <fd_tuple.h>

@@ -109,11 +109,11 @@ boot(void)
 
 	/* Early initialization. */
 	ram_bootstrap();
+	coremap_init();
 	proc_bootstrap();
 	thread_bootstrap();
 	hardclock_bootstrap();
 	vfs_bootstrap();
-	coremap_init();
 
 	/* Probe and initialize devices. Interrupts should come on. */
 	kprintf("Device probe...\n");

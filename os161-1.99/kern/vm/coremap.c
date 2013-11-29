@@ -27,18 +27,44 @@ struct coremap
 	int size;
 };
 
-struct coremap
 
-int frame_alloc(int *frame)
+int kframe_alloc(int *frame)
 {
-	for(int i = 0; i < size; i++)
+	for(int i = 0; i < cm.size; i++)
+	{
+		if(cm.coremap_ptr[i].status == UNALLOCATED)
+		{
+			cm.coremap_ptr[i].status = KERNEL;
+			cm.coremap_ptr[i].seg_ptr = NULL;
+			cm.coremap_ptr[i].offset = -1;
+			*frame = i;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+int frame_alloc(segment* user_seg, int *frame)
+{
+	for(int i = 0; i < cm.size; i++)
 	{
 		if(cm.coremap_ptr[i].status == UNALLOCATED)
 		{
 			cm.coremap_ptr[i].status = USER;
-			segemtn
+			cm.coremap_ptr[i].seg_ptr = user_seg;
+			cm.coremap_ptr[i].offset = i - user_seg.vaddr_start; 
+			frame = &i;
+			return 0;
+		}
+	}
+	return 1;
+}
 	
-
-
+void frame_free(int frame)
+{
+	cm.coremap_ptr[frame].status = UNALLOCATED;
+	cm.coremap_ptr[frame].seg_ptr = NULL;
+	cm.coremap_ptr[frame].offset = -1;
+}
 
 

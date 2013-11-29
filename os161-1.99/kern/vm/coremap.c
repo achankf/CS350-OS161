@@ -86,3 +86,4 @@ void frame_free(int frame)
 		set_frame(frame, UNALLOCATED, 0,0);
 	spinlock_release(&coremap_lock);
 }
+

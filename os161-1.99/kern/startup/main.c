@@ -49,6 +49,7 @@
 #include <syscall.h>
 #include <test.h>
 #include <version.h>
+#include <coremap.h>
 #include "autoconf.h"  // for pseudoconfig
 #include "opt-A0.h"
 #include <fd_tuple.h>
@@ -112,6 +113,7 @@ boot(void)
 	thread_bootstrap();
 	hardclock_bootstrap();
 	vfs_bootstrap();
+	coremap_init();
 
 	/* Probe and initialize devices. Interrupts should come on. */
 	kprintf("Device probe...\n");

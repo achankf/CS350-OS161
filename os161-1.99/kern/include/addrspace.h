@@ -37,9 +37,9 @@
 
 #include <vm.h>
 #include "opt-dumbvm.h"
+#include "segment.h"
 
 struct vnode;
-
 
 /* 
  * Address space - data structure associated with the virtual memory
@@ -49,23 +49,7 @@ struct vnode;
  */
 
 struct addrspace {
-#if OPT_DUMBVM
-        vaddr_t as_vbase1;
-        paddr_t as_pbase1;
-        size_t as_npages1;
-        vaddr_t as_vbase2;
-        paddr_t as_pbase2;
-        size_t as_npages2;
-        paddr_t as_stackpbase;
-#else
-        vaddr_t as_vbase1;
-        paddr_t as_pbase1;
-        size_t as_npages1;
-        vaddr_t as_vbase2;
-        paddr_t as_pbase2;
-        size_t as_npages2;
-        paddr_t as_stackpbase;
-#endif
+	 struct segment segs[NUM_SEGS];
 };
 
 /*
@@ -119,6 +103,7 @@ int               as_prepare_load(struct addrspace *as);
 int               as_complete_load(struct addrspace *as);
 int               as_define_stack(struct addrspace *as, vaddr_t *initstackptr);
 
+bool as_okay(struct addrspace *as);
 
 /*
  * Functions in loadelf.c

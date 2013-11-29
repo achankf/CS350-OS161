@@ -77,7 +77,7 @@ frame_alloc(int *frame, core_status_t status, pid_t pid, int vpn)
 
 int kframe_alloc(int *frame, int vpn)
 {
-	return frame_alloc(frame, KERNEL, 1, vpn);
+	return frame_alloc(frame, KERNEL, 0, vpn);
 }
 
 void frame_free(int frame)

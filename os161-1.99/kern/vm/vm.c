@@ -77,13 +77,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	//vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
-	bool dirty =  true;
+	bool dirty;
 	int i;
 	uint32_t ehi, elo;
 	struct addrspace *as;
 	int spl;
 
 	faultaddress &= PAGE_FRAME;
+	dirty = true;
 
 	DEBUG(DB_VM, "smartbvm: fault: 0x%x\n", faultaddress);
 

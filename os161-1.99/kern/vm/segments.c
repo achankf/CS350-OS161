@@ -8,6 +8,7 @@
 
 bool seg_is_inited(struct segment *seg){
 	KASSERT(seg != NULL);
+	DEBUG(DB_VM,"pid:%d, seg_vbase:%x, seg->pagetable:%p\n", curproc->pid, seg->vbase, seg->pagetable);
 	return seg->vbase && seg->pagetable != NULL;
 }
 
@@ -28,13 +29,22 @@ void seg_cleanup(struct segment *seg){
 int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	KASSERT(seg != NULL);
 	KASSERT(seg_in_range(seg, vaddr));
+	KASSERT(seg_is_inited(seg));
+
+	DEBUG(DB_VM,"seg_translate %p\n", (void*)vaddr);
+
 	int vpn = ADDR_MAPPING_NUM(vaddr);
 	int offset = ADDR_OFFSET(vaddr);
 	int rv;
 
-	int idx = vpn - seg->vbase;
+	int idx = vpn - ADDR_MAPPING_NUM(seg->vbase);
 
-	KASSERT(seg->pagetable[idx].alloc);
+	DEBUG(DB_VM,"index values %d, vbase %d\n", idx, ADDR_MAPPING_NUM(seg->vbase));
+
+	DEBUG(DB_VM,"On-demanding page loading %d\n", !seg->pagetable[idx].alloc);
+	if(!seg->pagetable[idx].alloc){
+		uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
+	}
 
 	if (seg->pagetable[idx].being_swapped){
 		rv = swap_to_mem(curproc->pid, vpn);

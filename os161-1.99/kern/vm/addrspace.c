@@ -219,9 +219,12 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	(void)as;
 
+kprintf("as_define_stack\n");
 	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;
-	return seg_init(&as->segs[STACK], USERSTACK - PAGE_SIZE * DUMBVM_STACKPAGES, DUMBVM_STACKPAGES);
+	*stackptr = USERSTACK - PAGE_SIZE;
+	DEBUG(DB_VM,"define stack: %p\n", (void*)*stackptr);
+	DEBUG(DB_VM,"define stack: %p\n", (void*)USERSTACK - PAGE_SIZE);
+	return seg_init(&as->segs[STACK], USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES);
 	
 }
 

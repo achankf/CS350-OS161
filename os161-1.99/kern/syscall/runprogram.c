@@ -80,6 +80,13 @@ runprogram(char *progname, int argc, char **argv, struct addrspace *old_as, bool
 	curproc_setas(as);
 	as_activate();
 
+	/* Define the user stack in the address space */
+	result = as_define_stack(as, &stackptr);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		return result;
+	}
+
 	/* Load the executable. */
 	result = load_elf(v, &entrypoint);
 	if (result) {
@@ -91,12 +98,14 @@ runprogram(char *progname, int argc, char **argv, struct addrspace *old_as, bool
 	/* Done with the file now. */
 	vfs_close(v);
 
+#if 0
 	/* Define the user stack in the address space */
 	result = as_define_stack(as, &stackptr);
 	if (result) {
 		/* p_addrspace will go away when curproc is destroyed */
 		return result;
 	}
+#endif
 
 	vaddr_t temp[argc];
 	//char **temp = kmalloc[argc * sizeof(char*)];

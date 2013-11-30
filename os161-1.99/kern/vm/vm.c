@@ -74,8 +74,6 @@ static int tlb_get_rr_victim()
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
-    
-	//vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
 	bool dirty;
 	int i;
@@ -88,16 +86,19 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	DEBUG(DB_VM, "vm_fault: 0x%x, type:%d\n", faultaddress, faulttype);
 
 	switch (faulttype) {
-        // handle the READ ONLY segment case
-        case VM_FAULT_READONLY:
-            kprintf("Attempt to write to READ ONLY segment");
-            sys__exit(1);
-
-        case VM_FAULT_READ:
-	    case VM_FAULT_WRITE:
-		break;
-	    default:
-		return EINVAL;
+		// handle the READ ONLY segment case
+		case VM_FAULT_READONLY:
+			kprintf("Attempt to write to READ ONLY segment\n");
+			sys__exit(1);
+			panic("The zombie walks!");
+		case VM_FAULT_READ:
+			DEBUG(DB_VM,"\t vm_fault: READ\n");
+			break;
+		case VM_FAULT_WRITE:
+			DEBUG(DB_VM,"\t vm_fault: WRITE\n");
+			break;
+		default:
+			return EINVAL;
 	}
 
 	if (curproc == NULL) {
@@ -121,12 +122,13 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	}
 
 	// check the consistency of the address space and find the physical address
-	for (int i = 0; i < NUM_SEGS; i++){
-		KASSERT(seg_is_inited(&as->segs[i]));
-		if (!seg_in_range(&as->segs[i], faultaddress)) continue;
-		if (seg_translate(&as->segs[i], faultaddress, &paddr)){
+	for (int j = 0; j < NUM_SEGS; j++){
+		KASSERT(seg_is_inited(&as->segs[j]));
+		if (!seg_in_range(&as->segs[j], faultaddress)) continue;
+		if (seg_translate(&as->segs[j], faultaddress, &paddr)){
 			panic("Cannot translate a valid vaddr\n");
 		}
+		dirty = as->segs[j].writeable;
 		goto VM_FAULT_VALID_ADDRESS;
 	}
 
@@ -141,18 +143,17 @@ VM_FAULT_VALID_ADDRESS:
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-	dirty = as->segs[i].writeable;
-	
 	i = tlb_get_rr_victim();
 	tlb_read(&ehi, &elo, i);
 	if (elo & TLBLO_VALID) {
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
 
+dirty= true;
 	ehi = faultaddress;
 	elo = paddr | (dirty ? TLBLO_DIRTY : 0) | TLBLO_VALID;
-	//elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
-	DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
+
+	DEBUG(DB_VM, "\tTo be written to TLB: fault 0x%x -> paddr 0x%x; ehi:%x, elo:%x\n", faultaddress, paddr, ehi, elo);
 	tlb_write(ehi, elo, i);
 	splx(spl);
 	return 0;	

@@ -47,12 +47,13 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 
 	int idx = vpn - ADDR_MAPPING_NUM(seg->vbase);
 
-	DEBUG(DB_VM,"\tindex values %d, vbase %d\n", idx, ADDR_MAPPING_NUM(seg->vbase));
+	DEBUG(DB_VM,"\tindex values %x, vpn %x, vbase %x\n", idx, vpn,ADDR_MAPPING_NUM(seg->vbase));
 
 	if(!seg->pagetable[idx].alloc){
 		DEBUG(DB_VM,"\tOn-demanding page loading on vpn %d\n", idx);
 		uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
-		DEBUG(DB_VM,"\tFrame allocated %d\n", seg->pagetable[idx].pfn);
+		seg->pagetable[idx].alloc = true;
+		DEBUG(DB_VM,"\tFrame %d allocated for vpn %x (index:%d)\n", seg->pagetable[idx].pfn, vpn, idx);
 	}
 
 	if (seg->pagetable[idx].being_swapped){

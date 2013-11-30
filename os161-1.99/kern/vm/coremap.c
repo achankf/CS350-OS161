@@ -133,9 +133,9 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 				break;
 			}
 		}
+	lock_release(coremap_lock);
 
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
-	lock_release(coremap_lock);
 	return ret;
 }
 
@@ -152,7 +152,6 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 
 	if (!booting) lock_acquire(coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
-		ZERO_OUT_FRAME(*frame);
 	if (!booting) lock_release(coremap_lock);
 	return rv;
 }

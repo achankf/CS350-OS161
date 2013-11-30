@@ -116,7 +116,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	}
 
 	// check the consistency of the address space
-	as_okay(as);
+	//as_okay(as);
 
 #if 0
 	vbase1 = as->segs[0].vbase;

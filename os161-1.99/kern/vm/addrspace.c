@@ -169,9 +169,6 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		 int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
 	size_t npages; 
 
 	/* Align the region. First, the base... */
@@ -205,32 +202,6 @@ int
 as_prepare_load(struct addrspace *as)
 {
 	(void)as;
-
-#if 0
-	KASSERT(as->as_pbase1 == 0);
-	KASSERT(as->as_pbase2 == 0);
-	KASSERT(as->as_stackpbase == 0);
-
-	as->as_pbase1 = getppages(as->as_npages1);
-	if (as->as_pbase1 == 0) {
-		return ENOMEM;
-	}
-
-	as->as_pbase2 = getppages(as->as_npages2);
-	if (as->as_pbase2 == 0) {
-		return ENOMEM;
-	}
-
-	as->as_stackpbase = getppages(DUMBVM_STACKPAGES);
-	if (as->as_stackpbase == 0) {
-		return ENOMEM;
-	}
-	
-	as_zero_region(as->as_pbase1, as->as_npages1);
-	as_zero_region(as->as_pbase2, as->as_npages2);
-	as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
-#endif
-
 	return 0;
 }
 
@@ -244,7 +215,6 @@ as_complete_load(struct addrspace *as)
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	//KASSERT(as->segs[STACK].pbase != 0); // TODO test physical address
 	(void)as;
 
 	/* Initial user-level stack pointer */

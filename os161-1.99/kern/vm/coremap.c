@@ -152,8 +152,6 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 }
 
 paddr_t frame_to_paddr(int frame){
-	paddr_t lo,hi;
-	ram_getsize(&lo, &hi);
 	return base + (frame << 12);
 }
 

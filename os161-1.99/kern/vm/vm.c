@@ -77,6 +77,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	//vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
+	bool dirty =  true;
 	int i;
 	uint32_t ehi, elo;
 	struct addrspace *as;
@@ -84,7 +85,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	faultaddress &= PAGE_FRAME;
 
-	DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
+	DEBUG(DB_VM, "smartbvm: fault: 0x%x\n", faultaddress);
 
 	switch (faulttype) {
 	    case VM_FAULT_READONLY:
@@ -115,30 +116,20 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		return EFAULT;
 	}
 
-	// check the consistency of the address space
-	as_okay(as);
+	// check the consistency of the address space and find the physical address
+	for (int i = 0; i < NUM_SEGS; i++){
+		KASSERT(seg_is_inited(&as->segs[i]));
+		if (!seg_in_range(&as->segs[i], faultaddress)) continue;
+		if (seg_translate(&as->segs[i], faultaddress, &paddr)){
+			panic("Cannot translate a valid vaddr\n");
+		}
+		if (i == TEXT) dirty = false;
+		goto VM_FAULT_VALID_ADDRESS;
+	}
 
-#if 0
-	vbase1 = as->segs[0].vbase;
-	vtop1 = vbase1 + as->segs[1].npages * PAGE_SIZE;
-	vbase2 = as->segs[1].vbase;
-	vtop2 = vbase2 + as->segs[1].npages * PAGE_SIZE;
-	stackbase = USERSTACK - DUMBVM_STACKPAGES * PAGE_SIZE;
-	stacktop = USERSTACK;
+	return EFAULT;
 
-	if (faultaddress >= vbase1 && faultaddress < vtop1) {
-		paddr = (faultaddress - vbase1) + as->as_pbase1;
-	}
-	else if (faultaddress >= vbase2 && faultaddress < vtop2) {
-		paddr = (faultaddress - vbase2) + as->as_pbase2;
-	}
-	else if (faultaddress >= stackbase && faultaddress < stacktop) {
-		paddr = (faultaddress - stackbase) + as->as_stackpbase;
-	}
-	else {
-		return EFAULT;
-	}
-#endif
+VM_FAULT_VALID_ADDRESS:
 
 	/* make sure it's page-aligned */
 	KASSERT((paddr & PAGE_FRAME) == paddr);
@@ -153,15 +144,11 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
 	ehi = faultaddress;
-	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+	elo = paddr | (dirty? TLBLO_DIRTY : 0) | TLBLO_VALID;
 	DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);
 	return 0;	
-
-	kprintf("dumbvm: Ran out of TLB entries - cannot handle page fault\n");
-	splx(spl);
-	return EFAULT;
 }
 #endif /* OPT_VM */
 

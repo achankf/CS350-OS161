@@ -8,18 +8,21 @@ enum {
 };
 
 struct page_entry{
-	int vpn;
-	bool swap;
+	int pfn;
+	bool being_swapped;
+	bool alloc;
 };
 
 struct segment{
-	int vbase;
+	vaddr_t vbase;
 	int npages;
 	struct page_entry *pagetable;
 };
 
 bool seg_is_inited(struct segment *seg);
-int seg_init(struct segment *seg, int vbase, int npages);
+int seg_init(struct segment *seg, vaddr_t vbase, int npages);
 void seg_cleanup(struct segment *seg);
+int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret);
+bool seg_in_range(struct segment *seg, vaddr_t vaddr);
 
 #endif

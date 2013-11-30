@@ -18,6 +18,7 @@
 #include <spinlock.h>
 #include <uw-vmstats.h>
 #include <coremap.h>
+#include <syscalls.h>
 
 void
 vm_bootstrap(void)
@@ -73,8 +74,7 @@ static int tlb_get_rr_victim()
 int
 vm_fault(int faulttype, vaddr_t faultaddress)
 {
-  /* Adapt code form dumbvm or implement something new */
-
+    
 	//vaddr_t vbase1, vtop1, vbase2, vtop2, stackbase, stacktop;
 	paddr_t paddr;
 	int i;
@@ -87,10 +87,12 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	DEBUG(DB_VM, "dumbvm: fault: 0x%x\n", faultaddress);
 
 	switch (faulttype) {
-	    case VM_FAULT_READONLY:
-		/* We always create pages read-write, so we can't get this */
-		panic("dumbvm: got VM_FAULT_READONLY\n");
-	    case VM_FAULT_READ:
+        // handle the READ ONLY segment case
+        case VM_FAULT_READONLY:
+            kprintf("Attempt to write to READ ONLY segment");
+            sys__exit(1);
+
+        case VM_FAULT_READ:
 	    case VM_FAULT_WRITE:
 		break;
 	    default:

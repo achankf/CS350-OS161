@@ -210,7 +210,7 @@ int
 as_complete_load(struct addrspace *as)
 {
 	(void)as;
-	return 1;
+	return 0;
 	// initialize stack segment
 }
 

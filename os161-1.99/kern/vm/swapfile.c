@@ -1,3 +1,4 @@
+#include <types.h>
 #include <coremap.h>
 
 struct swap_entry {
@@ -5,11 +6,13 @@ struct swap_entry {
     pid_t pid;
     int id;
     char block[4096]; // data in memory
-
 };
 
-int swap_to_disk (pid_t pid, int *frame) {
+int swap_to_disk (pid_t pid, int *frame){
+	(void)pid;
+	(void)frame;
     
+#if 0
    struct vnode* swapfile;
    int err = vfs_open("lhd0raw:", O_RDWR, 0, &swapfile);
    if (err != 0) {
@@ -18,13 +21,17 @@ int swap_to_disk (pid_t pid, int *frame) {
 
     
 
+#endif
     return 1;
 
 }
 
-int swap_to_mem (pid_t pid, int frame) {
+int swap_to_mem (pid_t pid, int vpn){
 
     struct vnode* swapfile;
+	(void) pid;
+	(void) vpn;
+	(void) swapfile;
 
     return 1;
 

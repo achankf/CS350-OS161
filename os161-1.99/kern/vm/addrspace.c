@@ -31,6 +31,7 @@
 #include <kern/errno.h>
 #include <lib.h>
 #include <addrspace.h>
+#include <segment.h>
 #include <spl.h>
 #include <mips/tlb.h>
 #include <vm.h>
@@ -169,9 +170,6 @@ int
 as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		 int readable, int writeable, int executable)
 {
-	/*
-	 * Write this.
-	 */
 	size_t npages; 
 
 	/* Align the region. First, the base... */
@@ -205,57 +203,28 @@ int
 as_prepare_load(struct addrspace *as)
 {
 	(void)as;
-
-#if 0
-	KASSERT(as->as_pbase1 == 0);
-	KASSERT(as->as_pbase2 == 0);
-	KASSERT(as->as_stackpbase == 0);
-
-	as->as_pbase1 = getppages(as->as_npages1);
-	if (as->as_pbase1 == 0) {
-		return ENOMEM;
-	}
-
-	as->as_pbase2 = getppages(as->as_npages2);
-	if (as->as_pbase2 == 0) {
-		return ENOMEM;
-	}
-
-	as->as_stackpbase = getppages(DUMBVM_STACKPAGES);
-	if (as->as_stackpbase == 0) {
-		return ENOMEM;
-	}
-	
-	as_zero_region(as->as_pbase1, as->as_npages1);
-	as_zero_region(as->as_pbase2, as->as_npages2);
-	as_zero_region(as->as_stackpbase, DUMBVM_STACKPAGES);
-#endif
-
 	return 0;
 }
 
 int
 as_complete_load(struct addrspace *as)
 {
+	(void)as;
+	return 1;
 	// initialize stack segment
-	return seg_init(&as->segs[STACK], USERSTACK, DUMBVM_STACKPAGES);
 }
 
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	//KASSERT(as->segs[STACK].pbase != 0); // TODO test physical address
 	(void)as;
 
+kprintf("as_define_stack\n");
 	/* Initial user-level stack pointer */
-	*stackptr = USERSTACK;
+	*stackptr = USERSTACK - PAGE_SIZE;
+	DEBUG(DB_VM,"define stack: %p\n", (void*)*stackptr);
+	DEBUG(DB_VM,"define stack: %p\n", (void*)USERSTACK - PAGE_SIZE);
+	return seg_init(&as->segs[STACK], USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES);
 	
-	return 0;
 }
 
-bool as_okay(struct addrspace *as){
-	// TODO
-	(void) as;
-	KASSERT(0);
-	return false;
-}

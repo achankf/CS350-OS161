@@ -118,5 +118,7 @@ struct tlbshootdown {
 
 #define TLBSHOOTDOWN_MAX 16
 
+#define ADDR_OFFSET(addr) (addr & 0xfff)
+#define ADDR_MAPPING_NUM(addr) (addr >> 12)
 
 #endif /* _MIPS_VM_H_ */

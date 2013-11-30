@@ -74,6 +74,10 @@ static const char harvard_copyright[] =
     "Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009\n"
     "   President and Fellows of Harvard College.  All rights reserved.\n";
 
+static
+void finish_boot(){
+	coremap_finalize();
+}
 
 /*
  * Initial boot sequence.
@@ -140,6 +144,8 @@ boot(void)
 	#endif /* OPT_A0 */	
 
     vmstats_init();
+
+	finish_boot();
 
 	/*
 	 * Make sure various things aren't screwed up.

@@ -18,6 +18,8 @@ paddr_t base;
 struct coremap_entry *coremap_ptr;
 struct lock *coremap_lock = 0;
 
+bool booting = true;
+
 typedef enum {
 	UNALLOCATED, USER, KERNEL
 } core_status_t;
@@ -29,17 +31,13 @@ struct coremap_entry{
 };
 
 static void
-set_frame(int frame, core_status_t status, pid_t pid, int id)
-{
-	// must hold the lock
-	KASSERT(lock_do_i_hold(coremap_lock));
+set_frame(int frame, core_status_t status, pid_t pid, int id) {
 	coremap_ptr[frame].status = status;
 	coremap_ptr[frame].pid = pid;
 	coremap_ptr[frame].id = id;
 }
 
 static int core_find_next(int idx, int *ret){
-	KASSERT(lock_do_i_hold(coremap_lock));
 	//kprintf("%p %d %p %d\n", coremap_ptr, idx, ret, num_frames);
 	for (int i = idx; i < num_frames; i++){
 		if(coremap_ptr[i].status != UNALLOCATED) continue;
@@ -51,7 +49,6 @@ static int core_find_next(int idx, int *ret){
 
 static void
 frame_range_mark(int start, int size, core_status_t status, pid_t pid, int id){
-	KASSERT(lock_do_i_hold(coremap_lock));
 	int idx = start;
 	for (int i = 0; i < size; i++, idx++)
 		set_frame(idx, status, pid, id);
@@ -59,7 +56,6 @@ frame_range_mark(int start, int size, core_status_t status, pid_t pid, int id){
 
 static int
 frame_find_continuous(int *retframe, int frames_wanted){
-	KASSERT(lock_do_i_hold(coremap_lock));
 	int prev;
 	int rv = core_find_next(0, &prev);
 
@@ -87,7 +83,6 @@ frame_find_continuous(int *retframe, int frames_wanted){
 static int
 frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int frames_wanted)
 {
-	KASSERT(lock_do_i_hold(coremap_lock));
 	int rv = frame_find_continuous(frame, frames_wanted);
 	if (rv) return rv;
 	frame_range_mark(*frame, frames_wanted, status, pid, id);
@@ -97,8 +92,6 @@ frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int 
 void
 coremap_init()
 {
-	coremap_lock = lock_create("coremap lock");
-
 	paddr_t lo,hi;
 	ram_getsize(&lo, &hi);
 	int ram_size = (hi-lo);
@@ -119,6 +112,9 @@ coremap_init()
 	coremap_size = num_of_frames * sizeof(struct coremap_entry);
 
 	bzero(coremap_ptr, coremap_size);
+
+	// variable booting avoid lock_acquire in kframe_alloc
+	coremap_lock = lock_create("coremap lock");
 }
 
 int
@@ -154,10 +150,10 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 {
 	int rv;
 
-	lock_acquire(coremap_lock);
+	if (!booting) lock_acquire(coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
 		ZERO_OUT_FRAME(*frame);
-	lock_release(coremap_lock);
+	if (!booting) lock_release(coremap_lock);
 	return rv;
 }
 
@@ -165,3 +161,6 @@ paddr_t frame_to_paddr(int frame){
 	return base + (frame << 12);
 }
 
+void coremap_finalize(void){
+	booting = false;
+}

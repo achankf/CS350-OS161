@@ -18,7 +18,7 @@
 #include <spinlock.h>
 #include <uw-vmstats.h>
 #include <coremap.h>
-#include <syscalls.h>
+#include <syscall.h>
 
 void
 vm_bootstrap(void)
@@ -86,7 +86,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	faultaddress &= PAGE_FRAME;
 	dirty = true;
 
-	DEBUG(DB_VM, "smartbvm: fault: 0x%x\n", faultaddress);
+	DEBUG(DB_VM, "smartbvm: fault: 0x%x, type:%d\n", faultaddress, faulttype);
 
 	switch (faulttype) {
         // handle the READ ONLY segment case
@@ -147,7 +147,8 @@ VM_FAULT_VALID_ADDRESS:
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
 	ehi = faultaddress;
-	elo = paddr | (dirty? TLBLO_DIRTY : 0) | TLBLO_VALID;
+	//elo = paddr | (dirty? TLBLO_DIRTY : 0) | TLBLO_VALID;
+	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
 	DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);

@@ -81,6 +81,9 @@ load_segment(struct addrspace *as, struct vnode *v,
 	     size_t memsize, size_t filesize,
 	     int is_executable)
 {
+
+	DEBUG(DB_VM, "Running load segment %p, size %d\n", (void*)vaddr, memsize);
+
 	struct iovec iov;
 	struct uio u;
 	int result;
@@ -253,6 +256,11 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 		}
 	}
 
+	// copy elf-related files to addrspace
+	as->eh = eh; // deep copy
+	as->ph = ph; // deep copy
+	as->v = v;
+
 	result = as_prepare_load(as);
 	if (result) {
 		return result;
@@ -262,6 +270,8 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	 * Now actually load each segment.
 	 */
 
+	(void) load_segment;
+#if 1
 	for (i=0; i<eh.e_phnum; i++) {
 		off_t offset = eh.e_phoff + i*eh.e_phentsize;
 		uio_kinit(&iov, &ku, &ph, sizeof(ph), offset, UIO_READ);
@@ -295,6 +305,7 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 			return result;
 		}
 	}
+#endif
 
 	result = as_complete_load(as);
 	if (result) {

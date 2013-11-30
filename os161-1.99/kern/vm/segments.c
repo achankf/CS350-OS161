@@ -9,16 +9,19 @@
 bool seg_is_inited(struct segment *seg){
 	KASSERT(seg != NULL);
 	DEBUG(DB_VM,"pid:%d, seg_vbase:%x, seg->pagetable:%p\n", curproc->pid, seg->vbase, seg->pagetable);
-	return seg->vbase && seg->pagetable != NULL;
+	return seg->vbase && seg->pagetable != NULL && seg->as != NULL;
 }
 
-int seg_init(struct segment *seg, vaddr_t vbase, int npages){
+int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npages){
 	KASSERT(seg != NULL);
+	KASSERT(as != NULL);
+
+	seg->pagetable = kmalloc(npages * sizeof(struct page_entry));
+	if (seg->pagetable == NULL) return ENOMEM;
 
 	seg->vbase = vbase & PAGE_FRAME;
 	seg->npages = npages;
-	seg->pagetable = kmalloc(npages * sizeof(struct page_entry));
-	if (seg->pagetable == NULL) return ENOMEM;
+	seg->as = as;
 	return 0;
 }
 
@@ -39,10 +42,10 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 
 	int idx = vpn - ADDR_MAPPING_NUM(seg->vbase);
 
-	DEBUG(DB_VM,"index values %d, vbase %d\n", idx, ADDR_MAPPING_NUM(seg->vbase));
+	DEBUG(DB_VM,"\tindex values %d, vbase %d\n", idx, ADDR_MAPPING_NUM(seg->vbase));
 
-	DEBUG(DB_VM,"On-demanding page loading %d\n", !seg->pagetable[idx].alloc);
 	if(!seg->pagetable[idx].alloc){
+		DEBUG(DB_VM,"\tOn-demanding page loading on vpn %d\n", idx);
 		uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
 	}
 

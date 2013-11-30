@@ -188,7 +188,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	for (int i = 0; i < NUM_SEGS - 1; i++){ // -1 because stack is separate
 		if (seg_is_inited(&as->segs[i])) continue;
-		return seg_init(&as->segs[i], vaddr & PAGE_FRAME, npages);
+		return seg_init(&as->segs[i], as, vaddr & PAGE_FRAME, npages);
 	}
 
 	/*
@@ -219,12 +219,10 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	(void)as;
 
-kprintf("as_define_stack\n");
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK - PAGE_SIZE;
 	DEBUG(DB_VM,"define stack: %p\n", (void*)*stackptr);
-	DEBUG(DB_VM,"define stack: %p\n", (void*)USERSTACK - PAGE_SIZE);
-	return seg_init(&as->segs[STACK], USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES);
+	return seg_init(&as->segs[STACK], as, USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES);
 	
 }
 

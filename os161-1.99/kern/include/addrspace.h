@@ -38,6 +38,7 @@
 #include <vm.h>
 #include "opt-dumbvm.h"
 #include "segment.h"
+#include "elf.h"
 
 struct vnode;
 
@@ -49,7 +50,10 @@ struct vnode;
  */
 
 struct addrspace {
-	 struct segment segs[NUM_SEGS];
+	struct segment segs[NUM_SEGS];
+	Elf_Ehdr eh;   /* Executable header */
+	Elf_Phdr ph;   /* "Program header" = segment header */
+	struct vnode *v; // the file tha contains the program
 };
 
 /*

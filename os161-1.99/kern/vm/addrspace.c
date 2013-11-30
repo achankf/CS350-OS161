@@ -171,6 +171,7 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 		 int readable, int writeable, int executable)
 {
 	size_t npages; 
+	DEBUG(DB_VM, "\tRegion: p_vaddr:%p, R:%d W:%d X:%d\n", (void*)vaddr, readable, writeable, executable);
 
 	/* Align the region. First, the base... */
 	sz += vaddr & ~(vaddr_t)PAGE_FRAME;
@@ -181,14 +182,9 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 
 	npages = sz / PAGE_SIZE;
 
-	/* We don't use these - all pages are read-write */
-	(void)readable;
-	(void)writeable;
-	(void)executable;
-
 	for (int i = 0; i < NUM_SEGS - 1; i++){ // -1 because stack is separate
 		if (seg_is_inited(&as->segs[i])) continue;
-		return seg_init(&as->segs[i], as, vaddr & PAGE_FRAME, npages);
+		return seg_init(&as->segs[i], as, vaddr & PAGE_FRAME, npages, readable, writeable, executable);
 	}
 
 	/*
@@ -210,8 +206,7 @@ int
 as_complete_load(struct addrspace *as)
 {
 	(void)as;
-	return 1;
-	// initialize stack segment
+	return 0;
 }
 
 int
@@ -222,7 +217,7 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK - PAGE_SIZE;
 	DEBUG(DB_VM,"define stack: %p\n", (void*)*stackptr);
-	return seg_init(&as->segs[STACK], as, USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES);
+	return seg_init(&as->segs[STACK], as, USERSTACK - PAGE_SIZE * (DUMBVM_STACKPAGES + 1), DUMBVM_STACKPAGES, true, true, false);
 	
 }
 

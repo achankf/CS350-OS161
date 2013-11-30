@@ -163,6 +163,8 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	struct uio ku;
 	struct addrspace *as;
 
+	DEBUG(DB_VM, "Running load_elf\n");
+
 	as = curproc_getas();
 
 	/*

@@ -84,9 +84,8 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	int spl;
 
 	faultaddress &= PAGE_FRAME;
-	dirty = true;
 
-	DEBUG(DB_VM, "smartbvm: fault: 0x%x, type:%d\n", faultaddress, faulttype);
+	DEBUG(DB_VM, "vm_fault: 0x%x, type:%d\n", faultaddress, faulttype);
 
 	switch (faulttype) {
         // handle the READ ONLY segment case
@@ -102,6 +101,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	}
 
 	if (curproc == NULL) {
+		DEBUG(DB_VM, "\tcannot get current process\n");
 		/*
 		 * No process. This is probably a kernel fault early
 		 * in boot. Return EFAULT so as to panic instead of
@@ -112,6 +112,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	as = curproc_getas();
 	if (as == NULL) {
+		DEBUG(DB_VM, "\tcannot get address space\n");
 		/*
 		 * No address space set up. This is probably also a
 		 * kernel fault early in boot.
@@ -126,10 +127,10 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		if (seg_translate(&as->segs[i], faultaddress, &paddr)){
 			panic("Cannot translate a valid vaddr\n");
 		}
-		if (i == TEXT) dirty = false;
 		goto VM_FAULT_VALID_ADDRESS;
 	}
 
+	DEBUG(DB_VM, "\tvaddr not in range\n");
 	return EFAULT;
 
 VM_FAULT_VALID_ADDRESS:
@@ -140,15 +141,17 @@ VM_FAULT_VALID_ADDRESS:
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
+	dirty = as->segs[i].writeable;
 	
 	i = tlb_get_rr_victim();
 	tlb_read(&ehi, &elo, i);
 	if (elo & TLBLO_VALID) {
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
+
 	ehi = faultaddress;
-	//elo = paddr | (dirty? TLBLO_DIRTY : 0) | TLBLO_VALID;
-	elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+	elo = paddr | (dirty ? TLBLO_DIRTY : 0) | TLBLO_VALID;
+	//elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
 	DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
 	tlb_write(ehi, elo, i);
 	splx(spl);

@@ -10,7 +10,7 @@
 #include <spinlock.h>
 #include <coremap.h>
 
-#define ZERO_OUT_FRAME(frame_num) (bzero((void*)PADDR_TO_KVADDR(frame_to_paddr(frame_num)), PAGE_SIZE))
+#define ZERO_OUT_FRAME(vaddr) (bzero(vaddr, PAGE_SIZE))
 
 int num_frames;
 paddr_t base;
@@ -90,7 +90,6 @@ frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int 
 	int rv = frame_find_continuous(frame, frames_wanted);
 	if (rv) return rv;
 	frame_range_mark(*frame, frames_wanted, status, pid, id);
-	ZERO_OUT_FRAME(*frame);
 	return 0;
 }
 
@@ -130,7 +129,7 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 				set_frame(i, USER, pid, id);
 				*frame = i;
 				ret = 0;
-				ZERO_OUT_FRAME(*frame);
+				ZERO_OUT_FRAME((void*)frame_to_paddr(*frame));
 				break;
 			}
 		}
@@ -151,6 +150,7 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 
 	spinlock_acquire(&coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
+		ZERO_OUT_FRAME((void*)PADDR_TO_KVADDR(frame_to_paddr(*frame)));
 	spinlock_release(&coremap_lock);
 	return rv;
 }

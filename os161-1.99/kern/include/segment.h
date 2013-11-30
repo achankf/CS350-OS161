@@ -18,10 +18,11 @@ struct segment{
 	int npages;
 	struct page_entry *pagetable;
 	struct addrspace *as;
+	bool readable, writeable, executable;
 };
 
 bool seg_is_inited(struct segment *seg);
-int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npages);
+int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npages, bool R, bool W, bool X);
 void seg_cleanup(struct segment *seg);
 int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret);
 bool seg_in_range(struct segment *seg, vaddr_t vaddr);

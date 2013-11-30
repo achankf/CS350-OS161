@@ -261,7 +261,7 @@ mips_trap(struct trapframe *tf)
 		 * The MIPS won't even tell you what invalid address
 		 * caused the bus error.
 		 */
-		panic("Bus error exception, PC=0x%x\n", tf->tf_epc);
+		panic("Bus error exception type=%d, PC=0x%x\n", code, tf->tf_epc);
 		break;
 	}
 

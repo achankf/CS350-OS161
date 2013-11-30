@@ -31,6 +31,7 @@
 #include <kern/errno.h>
 #include <lib.h>
 #include <addrspace.h>
+#include <segment.h>
 #include <spl.h>
 #include <mips/tlb.h>
 #include <vm.h>
@@ -208,8 +209,9 @@ as_prepare_load(struct addrspace *as)
 int
 as_complete_load(struct addrspace *as)
 {
+	(void)as;
+	return 1;
 	// initialize stack segment
-	return seg_init(&as->segs[STACK], USERSTACK, DUMBVM_STACKPAGES);
 }
 
 int
@@ -219,13 +221,7 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK;
+	return seg_init(&as->segs[STACK], USERSTACK - PAGE_SIZE * DUMBVM_STACKPAGES, DUMBVM_STACKPAGES);
 	
-	return 0;
 }
 
-bool as_okay(struct addrspace *as){
-	// TODO
-	(void) as;
-	KASSERT(0);
-	return false;
-}

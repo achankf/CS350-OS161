@@ -9,13 +9,14 @@
 #include <current.h>
 #include <spinlock.h>
 #include <coremap.h>
+#include <synch.h>
 
 #define ZERO_OUT_FRAME(frame) (bzero((void*)PADDR_TO_KVADDR(frame_to_paddr(frame)), PAGE_SIZE))
 
 int num_frames;
 paddr_t base;
 struct coremap_entry *coremap_ptr;
-struct spinlock coremap_lock = SPINLOCK_INITIALIZER;
+struct lock *coremap_lock = 0;
 
 typedef enum {
 	UNALLOCATED, USER, KERNEL
@@ -30,15 +31,15 @@ struct coremap_entry{
 static void
 set_frame(int frame, core_status_t status, pid_t pid, int id)
 {
-	// must hold the spinlock
-	KASSERT(spinlock_do_i_hold(&coremap_lock));
+	// must hold the lock
+	KASSERT(lock_do_i_hold(coremap_lock));
 	coremap_ptr[frame].status = status;
 	coremap_ptr[frame].pid = pid;
 	coremap_ptr[frame].id = id;
 }
 
 static int core_find_next(int idx, int *ret){
-	KASSERT(spinlock_do_i_hold(&coremap_lock));
+	KASSERT(lock_do_i_hold(coremap_lock));
 	//kprintf("%p %d %p %d\n", coremap_ptr, idx, ret, num_frames);
 	for (int i = idx; i < num_frames; i++){
 		if(coremap_ptr[i].status != UNALLOCATED) continue;
@@ -50,7 +51,7 @@ static int core_find_next(int idx, int *ret){
 
 static void
 frame_range_mark(int start, int size, core_status_t status, pid_t pid, int id){
-	KASSERT(spinlock_do_i_hold(&coremap_lock));
+	KASSERT(lock_do_i_hold(coremap_lock));
 	int idx = start;
 	for (int i = 0; i < size; i++, idx++)
 		set_frame(idx, status, pid, id);
@@ -58,7 +59,7 @@ frame_range_mark(int start, int size, core_status_t status, pid_t pid, int id){
 
 static int
 frame_find_continuous(int *retframe, int frames_wanted){
-	KASSERT(spinlock_do_i_hold(&coremap_lock));
+	KASSERT(lock_do_i_hold(coremap_lock));
 	int prev;
 	int rv = core_find_next(0, &prev);
 
@@ -86,7 +87,7 @@ frame_find_continuous(int *retframe, int frames_wanted){
 static int
 frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int frames_wanted)
 {
-	KASSERT(spinlock_do_i_hold(&coremap_lock));
+	KASSERT(lock_do_i_hold(coremap_lock));
 	int rv = frame_find_continuous(frame, frames_wanted);
 	if (rv) return rv;
 	frame_range_mark(*frame, frames_wanted, status, pid, id);
@@ -96,6 +97,8 @@ frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int 
 void
 coremap_init()
 {
+	coremap_lock = lock_create("coremap lock");
+
 	paddr_t lo,hi;
 	ram_getsize(&lo, &hi);
 	int ram_size = (hi-lo);
@@ -124,8 +127,7 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 	int ret = 1;
 
 	DEBUG(DB_VM,"Running uframe_alloc1\n");
-
-	spinlock_acquire(&coremap_lock);
+	lock_acquire(coremap_lock);
 		for(int i = 0; i < num_frames; i++) {
 			if(coremap_ptr[i].status == UNALLOCATED) {
 				set_frame(i, USER, pid, id);
@@ -137,26 +139,25 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 		}
 
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
-
-	spinlock_release(&coremap_lock);
+	lock_release(coremap_lock);
 	return ret;
 }
 
 void frame_free(int frame)
 {
-	spinlock_acquire(&coremap_lock);
+	lock_acquire(coremap_lock);
 		set_frame(frame, UNALLOCATED, 0,0);
-	spinlock_release(&coremap_lock);
+	lock_release(coremap_lock);
 }
 
 int kframe_alloc(int *frame, int id, int frames_wanted)
 {
 	int rv;
 
-	spinlock_acquire(&coremap_lock);
+	lock_acquire(coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
 		ZERO_OUT_FRAME(*frame);
-	spinlock_release(&coremap_lock);
+	lock_release(coremap_lock);
 	return rv;
 }
 

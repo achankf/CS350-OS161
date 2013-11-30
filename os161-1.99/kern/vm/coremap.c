@@ -10,7 +10,7 @@
 #include <spinlock.h>
 #include <coremap.h>
 
-#define ZERO_OUT_FRAME(vaddr) (bzero(vaddr, PAGE_SIZE))
+#define ZERO_OUT_FRAME(frame) (bzero((void*)PADDR_TO_KVADDR(frame_to_paddr(frame)), PAGE_SIZE))
 
 int num_frames;
 paddr_t base;
@@ -123,16 +123,21 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 {
 	int ret = 1;
 
+	DEBUG(DB_VM,"Running uframe_alloc1\n");
+
 	spinlock_acquire(&coremap_lock);
 		for(int i = 0; i < num_frames; i++) {
 			if(coremap_ptr[i].status == UNALLOCATED) {
 				set_frame(i, USER, pid, id);
 				*frame = i;
 				ret = 0;
-				ZERO_OUT_FRAME((void*)frame_to_paddr(*frame));
+				ZERO_OUT_FRAME(*frame);
 				break;
 			}
 		}
+
+	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
+
 	spinlock_release(&coremap_lock);
 	return ret;
 }
@@ -150,7 +155,7 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 
 	spinlock_acquire(&coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
-		ZERO_OUT_FRAME((void*)PADDR_TO_KVADDR(frame_to_paddr(*frame)));
+		ZERO_OUT_FRAME(*frame);
 	spinlock_release(&coremap_lock);
 	return rv;
 }

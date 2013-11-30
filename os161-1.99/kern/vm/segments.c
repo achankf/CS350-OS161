@@ -52,6 +52,7 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	if(!seg->pagetable[idx].alloc){
 		DEBUG(DB_VM,"\tOn-demanding page loading on vpn %d\n", idx);
 		uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
+		DEBUG(DB_VM,"\tFrame allocated %d\n", seg->pagetable[idx].pfn);
 	}
 
 	if (seg->pagetable[idx].being_swapped){

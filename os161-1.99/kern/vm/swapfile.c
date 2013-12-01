@@ -11,7 +11,7 @@
 #include <vnode.h>
 #include <uio.h>
 #include <swapfile.h>
-#include <id_generator.h>
+// #include <id_generator.h>
 #include <coremap.h>
 #include <uw-vmstats.h>
 
@@ -19,7 +19,7 @@
 #define SWAP_SIZE (SWAP_FILE_SIZE_IN_MB * (1 << 20) / PAGE_SIZE)
 
 struct swap_entry {
-	bool part_of_pt;
+	// bool part_of_pt; probably not needed
 	pid_t pid;
 	int id;
 	bool used;
@@ -30,7 +30,7 @@ struct swap_entry swaptable[SWAP_SIZE];
 struct lock * swap_lock;
 // the number of swap entries in side the swap table
 
-struct id_generator*idgen;
+// struct id_generator*idgen;
 struct vnode *swapfile;
 
 
@@ -38,8 +38,8 @@ static void swaptable_init() {
     if (swap_lock == NULL) {
         swap_lock = lock_create("swap_lock");
     }
-    bzero(swaptable, SWAP_SIZE * sizeof(struct swap_entry));
-    idgen = idgen_create(0);
+    bzero(swaptable, SWAP_SIZE);
+    // idgen = idgen_create(0);
 }
 
 
@@ -60,9 +60,8 @@ void swapfile_close()
 
 int swap_to_disk (struct page_entry *pe)
 {
-	kprintf("Swapping to disk...\n");
 	lock_acquire(swap_lock);
-	pe->being_swapped = true;
+	pe->swapped = true;
 	paddr_t pa = pe->pfn * PAGE_SIZE;
 	struct iovec iov;
 	struct uio ku;
@@ -98,9 +97,8 @@ END_OF_SWAP_TO_DISK:
 
 int swap_to_mem (struct page_entry *pe, int apfn)
 {
-	kprintf("Swapping to Mem...\n");
 	lock_acquire(swap_lock);
-	pe->being_swapped = false;
+	pe->swapped = false;
 	struct iovec iov;
 	struct uio ku;
 	int offset = pe->swap_index * PAGE_SIZE;
@@ -116,8 +114,8 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
-	DEBUG(DB_VM,"swapped back to memory %d\n", pe->swap_index);
+    	vmstats_inc(6); // Page Faults (Disk)
+	vmstats_inc(8); // Page Faults from Swapfile
 	lock_release(swap_lock);
-	vmstats_inc(8);
-	return 0;
+    	return 0;
 }

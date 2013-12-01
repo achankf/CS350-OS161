@@ -11,7 +11,7 @@ enum {
 struct page_entry{
 	int pfn;
 	int swap_index;
-	bool being_swapped;
+	bool swapped;
 	bool alloc;
 };
 

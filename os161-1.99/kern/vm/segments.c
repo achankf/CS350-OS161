@@ -144,7 +144,7 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 		DEBUG(DB_VM,"\tFrame %d allocated for vpn %x (index:%d)\n", seg->pagetable[idx].pfn, vpn, idx);
 	}
 
-	if (seg->pagetable[idx].being_swapped){
+	if (seg->pagetable[idx].swapped){
 		DEBUG(DB_VM,"Swapping in %d\n", idx);
 		int frame;
 		int result = uframe_alloc1(&frame, curproc->pid, vpn);

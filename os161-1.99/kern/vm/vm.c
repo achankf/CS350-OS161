@@ -44,9 +44,10 @@ void
 free_kpages(vaddr_t addr)
 {
 	/* nothing - leak the memory. */
-	DEBUG(DB_VM,"freeing %p\n", (void*) addr);
+	int frame = kvaddr_to_frame(addr);
+	DEBUG(DB_VM,"freeing %p (frame %d)\n", (void*) addr, frame);
 
-	(void)addr;
+	frame_free(frame);
 }
 
 void

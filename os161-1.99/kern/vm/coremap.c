@@ -160,6 +160,10 @@ paddr_t frame_to_paddr(int frame){
 	return base + (frame << 12);
 }
 
+int kvaddr_to_frame(vaddr_t kvaddr){
+	return (kvaddr - 0x80000000 - base) >> 12;
+}
+
 void coremap_finalize(void){
 	booting = false;
 }

@@ -32,7 +32,7 @@ alloc_kpages(int npages)
 {
 	int frame;
 	int rv;
-	rv = kframe_alloc(&frame, 0, npages);
+	rv = kframe_alloc(&frame, npages);
 
 	DEBUG(DB_VM, "Getting %x\n", frame_to_paddr(frame));
 

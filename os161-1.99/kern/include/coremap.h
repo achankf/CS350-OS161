@@ -8,7 +8,7 @@ struct segment;
 struct page_entry;
 
 void coremap_init(void);
-int kframe_alloc(int *frame, int id, int frames_wanted);
+int kframe_alloc(int *frame, int frames_wanted);
 //int uframe_alloc(int *frame, pid_t pid, int id, int frames_wanted);
 int uframe_alloc1(int *frame, pid_t pid, int id);
 void frame_free(int frame);

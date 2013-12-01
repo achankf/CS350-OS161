@@ -18,11 +18,11 @@
 
 int num_frames;
 paddr_t base;
-struct lock *coremap_lock = 0;
-struct coremap_entry *coremap_ptr;
-int num_frames_in_use = 0;
-
+struct lock *coremap_lock = NULL;
+struct coremap_entry *coremap_ptr = NULL;
+volatile int num_frames_in_use = 0;
 bool booting = true;
+struct queue *id_not_used;
 
 typedef enum {
 	UNALLOCATED, USER, KERNEL
@@ -42,7 +42,6 @@ set_frame(int frame, core_status_t status, pid_t pid, int id) {
 }
 
 static int core_find_next(int idx, int *ret){
-	//kprintf("%p %d %p %d\n", coremap_ptr, idx, ret, num_frames);
 	for (int i = idx; i < num_frames; i++){
 		if(coremap_ptr[i].status != UNALLOCATED) continue;
 		*ret = i;
@@ -107,17 +106,14 @@ coremap_init()
 	int coremap_size = num_frames * sizeof(struct coremap_entry);
 	int coremap_end_size = coremap_size / PAGE_SIZE + 1;
 	coremap_ptr = (struct coremap_entry*) PADDR_TO_KVADDR(ram_stealmem(coremap_end_size));
-	ram_getsize(&lo, &hi);
 
 	// finalize the memory pool
+	ram_getsize(&lo, &hi);
 	base = lo;
 	coremap_size = num_frames * sizeof(struct coremap_entry);
 	num_frames = (hi - lo) / PAGE_SIZE;
 
 	bzero(coremap_ptr, coremap_size);
-
-	// variable booting avoid lock_acquire in kframe_alloc
-	coremap_lock = lock_create("coremap lock");
 }
 
 int
@@ -127,15 +123,19 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 
 	DEBUG(DB_VM,"Running uframe_alloc1\n");
 	lock_acquire(coremap_lock);
+
+		// start search from the MIDDLE of the coremap
+		int idx = num_frames >> 1;
 		for(int i = 0; i < num_frames; i++) {
-			if(coremap_ptr[i].status == UNALLOCATED) {
-				set_frame(i, USER, pid, id);
-				*frame = i;
+			if(coremap_ptr[idx].status == UNALLOCATED) {
+				set_frame(idx, USER, pid, id);
+				*frame = idx;
 				ret = 0;
 				ZERO_OUT_FRAME(*frame);
 				num_frames_in_use++;
 				break;
 			}
+			idx = (idx + 1) % num_frames;
 		}
 	lock_release(coremap_lock);
 
@@ -145,20 +145,55 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 
 void frame_free(int frame)
 {
+	KASSERT(frame >= 0 && frame < num_frames);
+
 	lock_acquire(coremap_lock);
-		set_frame(frame, UNALLOCATED, 0,0);
+		int pid = coremap_ptr[frame].pid;
+		int id = coremap_ptr[frame].id;
+
+		if (pid != 0) {
+			KASSERT(curproc->pid == pid);
+			set_frame(frame, UNALLOCATED, 0,0);
+			goto FRAME_FREE_DONE;
+		}
+		for (int i = 0; i < num_frames; i++){
+			if (coremap_ptr[i].pid != 0 || coremap_ptr[i].id != id) continue;
+			set_frame(i, UNALLOCATED, 0,0);
+			if (id_not_used != NULL){ // recycle id's for kernel memory
+				q_addtail(id_not_used, (void*)id);
+			}
+			goto FRAME_FREE_DONE;
+		}
+
+		panic("Invalid freeing of the frame for the unique pair (pid,id)=(%d,%d)\n", pid, id);
+FRAME_FREE_DONE:
 	lock_release(coremap_lock);
 }
 
-int kframe_alloc(int *frame, int id, int frames_wanted)
+int kframe_alloc(int *frame, int frames_wanted)
 {
-	int rv;
+	int rv, id;
+	static int id_cur = 0;
 
-	if (!booting) lock_acquire(coremap_lock);
-		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
-		if(rv)
-			num_frames_in_use+=frames_wanted;
+	// only acquire lock and initialize idgen AFTER booting -- due to kmalloc
+	if (booting){
+		id = id_cur++;
+	} else {
+		lock_acquire(coremap_lock);
+			if (!q_empty(id_not_used)){
+				id = (int) q_remhead(id_not_used);
+			} else {
+				id = id_cur++;
+			}
+	}
+			rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
+			if(!rv) {
+				num_frames_in_use += frames_wanted;
+			} else if (id_not_used != NULL) {
+				q_addtail(id_not_used, (void*)id);
+			}
 	if (!booting) lock_release(coremap_lock);
+
 	return rv;
 }
 
@@ -171,6 +206,12 @@ int kvaddr_to_frame(vaddr_t kvaddr){
 }
 
 void coremap_finalize(void){
+	coremap_lock = lock_create("coremap lock");
+	id_not_used = q_create(num_frames);
+
+	if (coremap_lock == NULL || id_not_used == NULL){
+		panic("Not enough memory for the base system!!!!\n");
+	}
 	booting = false;
 }
 
@@ -180,9 +221,9 @@ int coremap_show(int nargs, char **args){
 	kprintf("---------------- Coremap ----------------\n");
 	int b = 0;
 	for (int i = 0; i < num_frames; i++){
-		kprintf("%3d:%3d %3d %3d    ", i, coremap_ptr[i].status, coremap_ptr[i].pid, coremap_ptr[i].id);
+		if (b == 0) kprintf("\n| ");
+		kprintf("%3d:%3d (%3d,%3d) | ", i, coremap_ptr[i].status, coremap_ptr[i].pid, coremap_ptr[i].id);
 		b = (b+1) % 6;
-		if (b == 0) kprintf("\n");
 	}
 	kprintf("\n");
 	return 0;
@@ -193,7 +234,6 @@ bool coremap_is_full()
 	return num_frames_in_use == num_frames;
 }
 	
-
 int coremap_get_rr_victim()
 {
         int victim;
@@ -229,9 +269,3 @@ int get_page_entry_victim(struct page_entry *ret, int victim)
 	
 	return 0;
 }
-	
-	
-		
-			
-
-

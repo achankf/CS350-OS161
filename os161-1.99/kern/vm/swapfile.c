@@ -14,7 +14,8 @@
 #include <id_generator.h>
 #include <coremap.h>
 
-#define SWAP_SIZE 2304 
+#define SWAP_FILE_SIZE_IN_MB (9)
+#define SWAP_SIZE (SWAP_FILE_SIZE_IN_MB * (1 << 20) / PAGE_SIZE)
 
 struct swap_entry {
 	bool part_of_pt;

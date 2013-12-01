@@ -10,10 +10,6 @@ int kframe_alloc(int *frame, int id, int frames_wanted);
 int uframe_alloc1(int *frame, pid_t pid, int id);
 void frame_free(int frame);
 paddr_t frame_to_paddr(int frame);
-
-int swap_to_disk (pid_t pid, int *frame);
-int swap_to_mem (pid_t pid, int vpn);
-
 void coremap_finalize(void);
 
 int coremap_show(int nargs, char **args);

@@ -5,6 +5,7 @@
 #include <current.h>
 #include <coremap.h>
 #include <proc.h>
+#include <swapfile.h>
 
 bool seg_is_inited(struct segment *seg){
 	KASSERT(seg != NULL);

@@ -125,6 +125,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		return EFAULT;
 	}
 
+	vmstats_inc(0);
 	seg_translate(seg, faultaddress, &paddr);
 	dirty = seg->writeable;
 

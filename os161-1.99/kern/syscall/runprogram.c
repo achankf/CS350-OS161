@@ -95,9 +95,6 @@ runprogram(char *progname, int argc, char **argv, struct addrspace *old_as, bool
 		return result;
 	}
 
-	/* Done with the file now. */
-	vfs_close(v);
-
 #if 0
 	/* Define the user stack in the address space */
 	result = as_define_stack(as, &stackptr);

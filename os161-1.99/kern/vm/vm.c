@@ -81,6 +81,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	uint32_t ehi, elo;
 	struct addrspace *as;
 	int spl;
+	int result;
 
 	faultaddress &= PAGE_FRAME;
 
@@ -127,8 +128,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	}
 
 	vmstats_inc(0);
-	seg_translate(seg, faultaddress, &paddr);
+	result = seg_translate(seg, faultaddress, &paddr);
+	if (result){
+		DEBUG(DB_VM, "\tErrorno %d\n", result);
+		return result;
+	}
 	dirty = seg->writeable;
+
+	DEBUG(DB_VM, "\ttranslation result %p\n", (void*) paddr);
 
 	/* make sure it's page-aligned */
 	KASSERT((paddr & PAGE_FRAME) == paddr);

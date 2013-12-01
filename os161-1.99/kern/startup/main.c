@@ -143,8 +143,6 @@ boot(void)
 	   hello();
 	#endif /* OPT_A0 */	
 
-    vmstats_init();
-
 	finish_boot();
 
 	/*

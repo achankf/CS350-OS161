@@ -61,105 +61,6 @@
 #include <elf.h>
 
 /*
- * Load a segment at virtual address VADDR. The segment in memory
- * extends from VADDR up to (but not including) VADDR+MEMSIZE. The
- * segment on disk is located at file offset OFFSET and has length
- * FILESIZE.
- *
- * FILESIZE may be less than MEMSIZE; if so the remaining portion of
- * the in-memory segment should be zero-filled.
- *
- * Note that uiomove will catch it if someone tries to load an
- * executable whose load address is in kernel space. If you should
- * change this code to not use uiomove, be sure to check for this case
- * explicitly.
- */
-static
-int
-load_segment(struct addrspace *as, struct vnode *v,
-	     off_t offset, vaddr_t vaddr, 
-	     size_t memsize, size_t filesize,
-	     int is_executable)
-{
-
-	DEBUG(DB_VM, "Running load segment %p, size %d\n", (void*)vaddr, memsize);
-
-	struct iovec iov;
-	struct uio u;
-	int result;
-
-	if (filesize > memsize) {
-		kprintf("ELF: warning: segment filesize > segment memsize\n");
-		filesize = memsize;
-	}
-
-	DEBUG(DB_EXEC, "ELF: Loading %lu bytes to 0x%lx\n", (unsigned long) filesize, (unsigned long) vaddr);
-
-	struct segment *seg;
-	paddr_t kpaddr;
-	result = as_which_seg(as, vaddr, &seg);
-	if (result) return result;
-	result = seg_translate(seg, vaddr, &kpaddr);
-	if (result) return result;
-
-	(void) is_executable;
-	iov.iov_ubase = (userptr_t)PADDR_TO_KVADDR(kpaddr);
-	iov.iov_len = memsize;		 // length of the memory space
-	u.uio_iov = &iov;
-	u.uio_iovcnt = 1;
-	u.uio_resid = filesize;          // amount to read from the file
-	u.uio_offset = offset;
-	u.uio_segflg = UIO_SYSSPACE;// is_executable ? UIO_USERISPACE : UIO_USERSPACE;
-	u.uio_rw = UIO_READ;
-	u.uio_space = NULL;
-
-	DEBUG(DB_VM,"ELF loading segment into %p(%p) as %p\n", (void*)PADDR_TO_KVADDR(kpaddr), (void*) kpaddr,(void*)vaddr);
-
-	result = VOP_READ(v, &u);
-	if (result) {
-		return result;
-	}
-
-	DEBUG(DB_VM, "\tDone loading\n");
-
-	if (u.uio_resid != 0) {
-		/* short read; problem with executable? */
-		kprintf("ELF: short read on segment - file truncated?\n");
-		return ENOEXEC;
-	}
-
-	/*
-	 * If memsize > filesize, the remaining space should be
-	 * zero-filled. There is no need to do this explicitly,
-	 * because the VM system should provide pages that do not
-	 * contain other processes' data, i.e., are already zeroed.
-	 *
-	 * During development of your VM system, it may have bugs that
-	 * cause it to (maybe only sometimes) not provide zero-filled
-	 * pages, which can cause user programs to fail in strange
-	 * ways. Explicitly zeroing program BSS may help identify such
-	 * bugs, so the following disabled code is provided as a
-	 * diagnostic tool. Note that it must be disabled again before
-	 * you submit your code for grading.
-	 */
-#if 0
-	{
-		size_t fillamt;
-
-		fillamt = memsize - filesize;
-		if (fillamt > 0) {
-			DEBUG(DB_EXEC, "ELF: Zero-filling %lu more bytes\n", 
-			      (unsigned long) fillamt);
-			u.uio_resid += fillamt;
-			result = uiomovezeros(fillamt, &u);
-		}
-	}
-#endif
-	
-	return result;
-}
-
-/*
  * Load an ELF executable user program into the current address space.
  *
  * Returns the entry point (initial PC) for the program in ENTRYPOINT.
@@ -267,58 +168,18 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 		if (result) {
 			return result;
 		}
+		as->segs[i-1].ph = ph;
+		as->segs[i-1].ondemand = true;
 	}
 
 	// copy elf-related files to addrspace
 	as->eh = eh; // deep copy
-	as->ph = ph; // deep copy
 	as->v = v;
 
 	result = as_prepare_load(as);
 	if (result) {
 		return result;
 	}
-
-	/*
-	 * Now actually load each segment.
-	 */
-
-	(void) load_segment;
-#if 1
-	for (i=0; i<eh.e_phnum; i++) {
-		off_t offset = eh.e_phoff + i*eh.e_phentsize;
-		uio_kinit(&iov, &ku, &ph, sizeof(ph), offset, UIO_READ);
-
-		result = VOP_READ(v, &ku);
-		if (result) {
-			return result;
-		}
-
-		if (ku.uio_resid != 0) {
-			/* short read; problem with executable? */
-			kprintf("ELF: short read on phdr - file truncated?\n");
-			return ENOEXEC;
-		}
-
-		switch (ph.p_type) {
-		    case PT_NULL: /* skip */ continue;
-		    case PT_PHDR: /* skip */ continue;
-		    case PT_MIPS_REGINFO: /* skip */ continue;
-		    case PT_LOAD: break;
-		    default:
-			kprintf("loadelf: unknown segment type %d\n", 
-				ph.p_type);
-			return ENOEXEC;
-		}
-
-		result = load_segment(as, v, ph.p_offset, ph.p_vaddr, 
-				      ph.p_memsz, ph.p_filesz,
-				      ph.p_flags & PF_X);
-		if (result) {
-			return result;
-		}
-	}
-#endif
 
 	result = as_complete_load(as);
 	if (result) {
@@ -327,5 +188,6 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 
 	*entrypoint = eh.e_entry;
 
+	DEBUG(DB_VM,"------FINISHED LOAD_ELF-------- %p\n", (void*) entrypoint);
 	return 0;
 }

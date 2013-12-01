@@ -8,7 +8,6 @@
 
 bool seg_is_inited(struct segment *seg){
 	KASSERT(seg != NULL);
-	DEBUG(DB_VM,"\tisinited: pid:%d, seg_vbase:%x, seg->pagetable:%p\n", curproc->pid, seg->vbase, seg->pagetable);
 	return seg->vbase && seg->pagetable != NULL && seg->as != NULL;
 }
 

@@ -196,6 +196,6 @@ enter_forked_process(void *tf, unsigned long fork_sem)
 
 	newp_tf.tf_v0 = newp_tf.tf_a3 = 0;
 	newp_tf.tf_epc += 4;
-	as_activate();
+	as_activate(true);
 	mips_usermode(&newp_tf);
 }

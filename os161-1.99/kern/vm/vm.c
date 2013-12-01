@@ -102,7 +102,6 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	}
 
 	if (curproc == NULL) {
-		DEBUG(DB_VM, "\tcannot get current process\n");
 		/*
 		 * No process. This is probably a kernel fault early
 		 * in boot. Return EFAULT so as to panic instead of
@@ -113,7 +112,6 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 
 	as = curproc_getas();
 	if (as == NULL) {
-		DEBUG(DB_VM, "\tcannot get address space\n");
 		/*
 		 * No address space set up. This is probably also a
 		 * kernel fault early in boot.

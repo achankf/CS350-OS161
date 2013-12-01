@@ -78,7 +78,7 @@ runprogram(char *progname, int argc, char **argv, struct addrspace *old_as, bool
 
 	/* Switch to it and activate it. */
 	curproc_setas(as);
-	as_activate();
+	as_activate(true);
 
 	/* Define the user stack in the address space */
 	result = as_define_stack(as, &stackptr);

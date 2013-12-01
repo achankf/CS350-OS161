@@ -115,7 +115,7 @@ as_destroy(struct addrspace *as)
 }
 
 void
-as_activate(void)
+as_activate(bool flushtlb)
 {
 	int spl;
 	struct addrspace *as;
@@ -132,11 +132,11 @@ as_activate(void)
 	/* Disable interrupts on this CPU while frobbing the TLB. */
 	spl = splhigh();
 
-#if 0
-	for (i=0; i<NUM_TLB; i++) {
-		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	if (flushtlb){
+		for (int i=0; i<NUM_TLB; i++) {
+			tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+		}
 	}
-#endif
 
 	splx(spl);
 }

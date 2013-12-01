@@ -104,7 +104,7 @@ int sys_execv(const char *program, char **args)
 	result = runprogram(kprogram, argc, kargs, old_as, true);
 
 	curproc_setas(old_as);
-	as_activate();
+	as_activate(true);
 
 	DEBUG(DB_EXEC,"runprogram failed\n");
 	return result;

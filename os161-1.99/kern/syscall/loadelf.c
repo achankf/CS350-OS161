@@ -93,8 +93,7 @@ load_segment(struct addrspace *as, struct vnode *v,
 		filesize = memsize;
 	}
 
-	DEBUG(DB_EXEC, "ELF: Loading %lu bytes to 0x%lx\n", 
-	      (unsigned long) filesize, (unsigned long) vaddr);
+	DEBUG(DB_EXEC, "ELF: Loading %lu bytes to 0x%lx\n", (unsigned long) filesize, (unsigned long) vaddr);
 
 	iov.iov_ubase = (userptr_t)vaddr;
 	iov.iov_len = memsize;		 // length of the memory space

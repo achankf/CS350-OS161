@@ -10,13 +10,17 @@
 #include <spinlock.h>
 #include <coremap.h>
 #include <synch.h>
+#include <swapfile.h>
+#include <proc.h>
+#include <segment.h>
 
 #define ZERO_OUT_FRAME(frame) (bzero((void*)PADDR_TO_KVADDR(frame_to_paddr(frame)), PAGE_SIZE))
 
 int num_frames;
 paddr_t base;
-struct coremap_entry *coremap_ptr;
 struct lock *coremap_lock = 0;
+struct coremap_entry *coremap_ptr;
+int num_frames_in_use = 0;
 
 bool booting = true;
 
@@ -94,22 +98,21 @@ coremap_init()
 {
 	paddr_t lo,hi;
 	ram_getsize(&lo, &hi);
-	int ram_size = (hi-lo);
-	int num_of_frames = ram_size / PAGE_SIZE; 
+	num_frames = (hi-lo) / PAGE_SIZE; 
 
 	/*
 	 * find out the block of memory required for the coremap
 	 * rounded to the next page size
 	 */
-	int coremap_size = num_of_frames * sizeof(struct coremap_entry);
+	int coremap_size = num_frames * sizeof(struct coremap_entry);
 	int coremap_end_size = coremap_size / PAGE_SIZE + 1;
 	coremap_ptr = (struct coremap_entry*) PADDR_TO_KVADDR(ram_stealmem(coremap_end_size));
 	ram_getsize(&lo, &hi);
 
 	// finalize the memory pool
 	base = lo;
+	coremap_size = num_frames * sizeof(struct coremap_entry);
 	num_frames = (hi - lo) / PAGE_SIZE;
-	coremap_size = num_of_frames * sizeof(struct coremap_entry);
 
 	bzero(coremap_ptr, coremap_size);
 
@@ -130,6 +133,7 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 				*frame = i;
 				ret = 0;
 				ZERO_OUT_FRAME(*frame);
+				num_frames_in_use++;
 				break;
 			}
 		}
@@ -152,6 +156,8 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 
 	if (!booting) lock_acquire(coremap_lock);
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
+		if(rv)
+			num_frames_in_use+=frames_wanted;
 	if (!booting) lock_release(coremap_lock);
 	return rv;
 }
@@ -181,3 +187,51 @@ int coremap_show(int nargs, char **args){
 	kprintf("\n");
 	return 0;
 }
+
+bool coremap_is_full()
+{
+	return num_frames_in_use == num_frames;
+}
+	
+
+int coremap_get_rr_victim()
+{
+        int victim;
+        static unsigned int next_victim = 0;
+
+        while(true)
+        {
+                if(coremap_ptr[next_victim].status == USER)
+                {
+						victim = next_victim;
+						coremap_ptr[next_victim].status = UNALLOCATED;
+                        next_victim = (next_victim + 1) % num_frames;
+						break;
+				}
+				next_victim = (next_victim + 1) % num_frames;
+		}
+		
+		return victim;
+}
+
+int get_page_entry_victim(struct page_entry *ret, int victim)
+{
+	struct proc *victim_proc = proc_getby_pid(coremap_ptr[victim].pid);
+	
+	struct segment *victim_seg;
+	
+	int result = as_which_seg(victim_proc->p_addrspace, coremap_ptr[victim].id << 12, &victim_seg);
+	
+	if(result)
+		return result;
+		
+	ret = &victim_seg->pagetable[coremap_ptr[victim].id - victim_seg->vbase];
+	
+	return 0;
+}
+	
+	
+		
+			
+
+

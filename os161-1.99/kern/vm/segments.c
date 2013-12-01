@@ -158,11 +158,14 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 
 	if (seg->pagetable[idx].being_swapped){
 		DEBUG(DB_VM,"Swapping in %d\n", idx);
-		rv = swap_to_mem(curproc->pid, vpn); // swap back
+		int frame;
+		int result = uframe_alloc1(&frame, curproc->pid, seg->vbase/PAGE_SIZE + idx);
+		if(result)
+			return result;
+		rv = swap_to_mem(&seg->pagetable[idx], frame); // swap back
 		if (rv) {
 			return rv;
 		}
-		seg->pagetable[idx].being_swapped = false; // in memory
 	}
 
 	*ret = frame_to_paddr(seg->pagetable[idx].pfn) | offset;

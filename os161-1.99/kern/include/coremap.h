@@ -2,7 +2,10 @@
 #ifndef _COREMAP_H_
 #define _COREMAP_H_
 
+#include <coremap.h>
+
 struct segment;
+struct page_entry;
 
 void coremap_init(void);
 int kframe_alloc(int *frame, int id, int frames_wanted);
@@ -16,4 +19,7 @@ int kvaddr_to_frame(vaddr_t kvaddr);
 void coremap_finalize(void);
 
 int coremap_show(int nargs, char **args);
+int get_page_entry_victim(struct page_entry *ret, int victim);
+bool coremap_is_full(void);
+int coremap_get_rr_victim(void);
 #endif

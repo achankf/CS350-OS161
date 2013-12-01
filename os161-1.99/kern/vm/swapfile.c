@@ -12,14 +12,15 @@
 #include <uio.h>
 #include <swapfile.h>
 #include <id_generator.h>
+#include <coremap.h>
 
 #define SWAP_SIZE 2304 
 
 struct swap_entry {
-    bool part_of_pt;
-    pid_t pid;
-    int id;
-
+	bool part_of_pt;
+	pid_t pid;
+	int id;
+	bool used;
 };
 
 // 9MB / PAGE_SIZE
@@ -32,14 +33,14 @@ struct vnode *swapfile;
 
 int swapfile_init()
 {
-        int result = vfs_open("SWAPFILE", O_RDWR|O_CREAT|O_TRUNC, 0, &swapfile);
-        if(result)
+	char *swapfile_path = kstrdup("SWAPFILE");
+	int result = vfs_open(swapfile_path, O_RDWR|O_CREAT|O_TRUNC, 0, &swapfile);
+	kfree(swapfile_path);        
+	if(result)
                 return 1;
 
         return result;
 }
-
-
 
 void swaptable_init() {
     if (swap_lock == NULL) {
@@ -47,14 +48,65 @@ void swaptable_init() {
     }
     bzero(swaptable, SWAP_SIZE);
     idgen = idgen_create(0);
-
 }
 
-int swap_to_disk ()
+
+int swap_to_disk (struct page_entry *pe)
 {
+	pe->being_swapped = true;
+	paddr_t pa = pe->pfn * PAGE_SIZE;
+	struct iovec iov;
+	struct uio ku;
+	int offset;
+	bool full = true;
+	for(int i = 0; i < SWAP_SIZE; i++)
+	{
+		if(!swaptable[i].used)
+		{
+			offset = i * PAGE_SIZE;
+			full = false;
+			swaptable[i].used = true;
+			pe->swap_index = i;
+			break;
+		}
+	}
+	if(full)
+	{
+		panic("The swap file is full");
+	}
+	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
+	int result = VOP_WRITE(swapfile, &ku);
+
+	if(result)
+	{
+		return result;
+	}		
+
+	return 0;
+}
+
+int swap_to_mem (struct page_entry *pe, int apfn)
+{
+	pe->being_swapped = false;
+	struct iovec iov;
+	struct uio ku;
+	int offset = pe->swap_index * PAGE_SIZE;
+	paddr_t pa = apfn * PAGE_SIZE;
+	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_READ);
+	int result = VOP_READ(swapfile, &ku);
+
+	if(result)
+	{
+		return result;
+	}
+
+	pe->pfn = apfn;
+	swaptable[pe->swap_index].used = false;
+
+	return 0;
+}
 	
-
-
+/*
 int swap_to_disk (pid_t pid, int *id){
     (void) pid;
     (void) id;
@@ -135,4 +187,4 @@ int swap_to_mem (pid_t pid, int id){
 #endif
     return 1;
 
-}
+}*/

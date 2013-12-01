@@ -23,7 +23,7 @@
 void
 vm_bootstrap(void)
 {
-	/* May need to add code. */
+	vmstats_init();
 }
 
 /* Allocate/free some kernel-space virtual pages */

@@ -1,5 +1,10 @@
 #include <types.h>
 #include <coremap.h>
+#include <vfs.h>
+#include <vnode.h>
+#include <synch.h>
+
+struct vnode *swapfile;
 
 struct swap_entry {
     bool part_of_pt;
@@ -23,7 +28,6 @@ int swap_to_disk (pid_t pid, int *frame){
 
 #endif
     return 1;
-
 }
 
 int swap_to_mem (pid_t pid, int vpn){

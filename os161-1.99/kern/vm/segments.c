@@ -96,7 +96,7 @@ void seg_cleanup(struct segment *seg){
 
 int seg_ondemand_load(struct segment *seg, int idx){
 	DEBUG(DB_VM,"On-demanding page loading on index %d\n", idx);
-	int result = uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
+	int result = uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx+ADDR_MAPPING_NUM(seg->vbase));
 	if (result) return result;
 	seg->pagetable[idx].alloc = true;
 
@@ -147,9 +147,13 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	if (seg->pagetable[idx].being_swapped){
 		DEBUG(DB_VM,"Swapping in %d\n", idx);
 		int frame;
-		int result = uframe_alloc1(&frame, curproc->pid, seg->vbase/PAGE_SIZE + idx);
+		int result = uframe_alloc1(&frame, curproc->pid, vpn);
 		if(result)
-			return result;
+		{
+			result = core_kickvictim(&frame);	
+			if (result) return result;
+		}
+		seg->pagetable[idx].pfn = frame;
 		rv = swap_to_mem(&seg->pagetable[idx], frame); // swap back
 		if (rv) {
 			return rv;

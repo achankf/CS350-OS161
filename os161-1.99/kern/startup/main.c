@@ -54,7 +54,7 @@
 #include "opt-A0.h"
 #include <fd_tuple.h>
 #include <uw-vmstats.h> // for tracking vm stats
-
+#include <swapfile.h>
 /*
  * These two pieces of data are maintained by the makefiles and build system.
  * buildconfig is the name of the config file the kernel was configured with.
@@ -144,6 +144,7 @@ boot(void)
 	#endif /* OPT_A0 */	
 
 	finish_boot();
+	swapfile_init();
 
 	/*
 	 * Make sure various things aren't screwed up.

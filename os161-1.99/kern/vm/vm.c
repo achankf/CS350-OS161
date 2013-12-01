@@ -90,7 +90,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	switch (faulttype) {
 		// handle the READ ONLY segment case
 		case VM_FAULT_READONLY:
-			kprintf("Attempt to write to READ ONLY segment\n");
+			DEBUG(DB_VM,"\tAttempt to write to READ ONLY segment\n");
 			sys__exit(1);
 			panic("The zombie walks!");
 		case VM_FAULT_READ:

@@ -176,9 +176,7 @@ int coremap_show(int nargs, char **args){
 	for (int i = 0; i < num_frames; i++){
 		kprintf("%3d:%3d %3d %3d    ", i, coremap_ptr[i].status, coremap_ptr[i].pid, coremap_ptr[i].id);
 		b = (b+1) % 6;
-		if (b == 0){
-			kprintf("\n");
-		}
+		if (b == 0) kprintf("\n");
 	}
 	kprintf("\n");
 	return 0;

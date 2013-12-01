@@ -146,7 +146,13 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 	i = tlb_get_rr_victim();
 	tlb_read(&ehi, &elo, i);
 	if (elo & TLBLO_VALID) {
+		vmstats_inc(2);
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
+	}
+	else
+	{
+		vmstats_inc(1);
+		DEBUG(DB_VM, "There is a free entry in TLB and we have just written on it.\n");
 	}
 
 	ehi = faultaddress;

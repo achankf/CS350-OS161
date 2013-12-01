@@ -30,6 +30,13 @@ int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npage
 }
 
 void seg_cleanup(struct segment *seg){
+	if (seg == NULL) return;
+
+	for (int i = 0; i < seg->npages; i++){
+		if (!seg->pagetable[i].alloc) continue;
+		DEBUG(DB_VM,"Deallocating pfn:%d for process %d's page %d\n", seg->pagetable[i].pfn, curproc->pid, i);
+		frame_free(seg->pagetable[i].pfn);
+	}
 	kfree(seg->pagetable);
 }
 

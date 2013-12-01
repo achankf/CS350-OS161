@@ -43,6 +43,7 @@
 #include <syscall.h>
 #include <test.h>
 #include <synch.h>
+#include <coremap.h>
 #include "opt-synchprobs.h"
 #include "opt-sfs.h"
 #include "opt-net.h"
@@ -546,6 +547,7 @@ static struct {
 } cmdtable[] = {
 	/* menus */
 	{ "?",		cmd_mainmenu },
+	{ "cm",		coremap_show },
 	{ "h",		cmd_mainmenu },
 	{ "help",	cmd_mainmenu },
 	{ "?o",		cmd_opsmenu },

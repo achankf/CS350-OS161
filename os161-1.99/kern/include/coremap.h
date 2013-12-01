@@ -15,4 +15,6 @@ int swap_to_disk (pid_t pid, int *frame);
 int swap_to_mem (pid_t pid, int vpn);
 
 void coremap_finalize(void);
+
+int coremap_show(int nargs, char **args);
 #endif

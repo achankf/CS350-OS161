@@ -119,21 +119,14 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 		return EFAULT;
 	}
 
-	// check the consistency of the address space and find the physical address
-	for (int j = 0; j < NUM_SEGS; j++){
-		KASSERT(seg_is_inited(&as->segs[j]));
-		if (!seg_in_range(&as->segs[j], faultaddress)) continue;
-		if (seg_translate(&as->segs[j], faultaddress, &paddr)){
-			panic("Cannot translate a valid vaddr\n");
-		}
-		dirty = as->segs[j].writeable;
-		goto VM_FAULT_VALID_ADDRESS;
+	struct segment *seg;
+	if (as_which_seg(as, faultaddress, &seg)){
+		DEBUG(DB_VM, "\tvaddr not in range\n");
+		return EFAULT;
 	}
 
-	DEBUG(DB_VM, "\tvaddr not in range\n");
-	return EFAULT;
-
-VM_FAULT_VALID_ADDRESS:
+	seg_translate(seg, faultaddress, &paddr);
+	dirty = seg->writeable;
 
 	/* make sure it's page-aligned */
 	KASSERT((paddr & PAGE_FRAME) == paddr);
@@ -147,7 +140,6 @@ VM_FAULT_VALID_ADDRESS:
 		DEBUG(DB_VM, "Overwritting a valid entry in TLB.\n");
 	}
 
-dirty= true;
 	ehi = faultaddress;
 	elo = paddr | (dirty ? TLBLO_DIRTY : 0) | TLBLO_VALID;
 

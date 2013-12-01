@@ -13,6 +13,7 @@
 #include <swapfile.h>
 #include <id_generator.h>
 #include <coremap.h>
+#include <uw-vmstats.h>
 
 #define SWAP_SIZE 2304 
 
@@ -93,6 +94,7 @@ int swap_to_disk (struct page_entry *pe)
 		return result;
 	}		
 	lock_release(swap_lock);
+	vmstats_inc(9);
 	return 0;
 }
 
@@ -117,6 +119,7 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 	swaptable[pe->swap_index].used = false;
 
 	lock_release(swap_lock);
+	vmstats_inc(8);
 	return 0;
 }
 	

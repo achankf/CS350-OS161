@@ -58,7 +58,7 @@ void swaptable_destroy() {
 
 int swap_to_disk (struct page_entry *pe)
 {
-	pe->being_swapped = true;
+	pe->swapped = true;
 	paddr_t pa = pe->pfn * PAGE_SIZE;
 	struct iovec iov;
 	struct uio ku;
@@ -92,7 +92,7 @@ int swap_to_disk (struct page_entry *pe)
 
 int swap_to_mem (struct page_entry *pe, int apfn)
 {
-	pe->being_swapped = false;
+	pe->swapped = false;
 	struct iovec iov;
 	struct uio ku;
 	int offset = pe->swap_index * PAGE_SIZE;

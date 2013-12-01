@@ -95,20 +95,32 @@ load_segment(struct addrspace *as, struct vnode *v,
 
 	DEBUG(DB_EXEC, "ELF: Loading %lu bytes to 0x%lx\n", (unsigned long) filesize, (unsigned long) vaddr);
 
-	iov.iov_ubase = (userptr_t)vaddr;
+	struct segment *seg;
+	paddr_t kpaddr;
+	result = as_which_seg(as, vaddr, &seg);
+	if (result) return result;
+	result = seg_translate(seg, vaddr, &kpaddr);
+	if (result) return result;
+
+	(void) is_executable;
+	iov.iov_ubase = (userptr_t)PADDR_TO_KVADDR(kpaddr);
 	iov.iov_len = memsize;		 // length of the memory space
 	u.uio_iov = &iov;
 	u.uio_iovcnt = 1;
 	u.uio_resid = filesize;          // amount to read from the file
 	u.uio_offset = offset;
-	u.uio_segflg = is_executable ? UIO_USERISPACE : UIO_USERSPACE;
+	u.uio_segflg = UIO_SYSSPACE;// is_executable ? UIO_USERISPACE : UIO_USERSPACE;
 	u.uio_rw = UIO_READ;
-	u.uio_space = as;
+	u.uio_space = NULL;
+
+	DEBUG(DB_VM,"ELF loading segment into %p(%p) as %p\n", (void*)PADDR_TO_KVADDR(kpaddr), (void*) kpaddr,(void*)vaddr);
 
 	result = VOP_READ(v, &u);
 	if (result) {
 		return result;
 	}
+
+	DEBUG(DB_VM, "\tDone loading\n");
 
 	if (u.uio_resid != 0) {
 		/* short read; problem with executable? */

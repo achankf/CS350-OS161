@@ -219,3 +219,12 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 	
 }
 
+int as_which_seg(struct addrspace *as, vaddr_t vaddr, struct segment **ret){
+	for (int j = 0; j < NUM_SEGS; j++){
+		KASSERT(seg_is_inited(&as->segs[j]));
+		if (!seg_in_range(&as->segs[j], vaddr)) continue;
+		*ret = &as->segs[j];
+		return 0;
+	}
+	return EFAULT;
+}

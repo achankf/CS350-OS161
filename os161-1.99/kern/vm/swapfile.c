@@ -87,7 +87,7 @@ int swap_to_disk (struct page_entry *pe)
 	}
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
 	int result = VOP_WRITE(swapfile, &ku);
-
+	DEBUG(DB_VM,"swapped index %d to disk.\n", pe->swap_index);
 	if(result)
 	{
 		lock_release(swap_lock);
@@ -117,7 +117,7 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
-
+	DEBUG(DB_VM,"swapped back to memory %d\n", pe->swap_index);
 	lock_release(swap_lock);
 	vmstats_inc(8);
 	return 0;

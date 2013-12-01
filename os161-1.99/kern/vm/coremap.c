@@ -125,19 +125,23 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 {
 	int ret = 1;
 
-	DEBUG(DB_VM,"Running uframe_alloc1\n");
+	DEBUG(DB_VM,"Running uframe_alloc1, frames: %d\n",num_frames_in_use);
 	lock_acquire(coremap_lock);
+	kprintf("u: frames_in_use %d, total %d\n", num_frames_in_use, num_frames);
 	if(coremap_is_full())
 	{
 		int victim = coremap_get_rr_victim();
 		struct page_entry *pe;
+		kprintf("full, victim is %d\n", victim);
 		int result = get_page_entry_victim(pe, victim);
+		kprintf("back from page_entry, result = %d\n", result);
 		if(result)
 		{
 			lock_release(coremap_lock);
 			return result;
 		}
 		swap_to_disk(pe);
+		num_frames_in_use--;
 	}
 	for(int i = 0; i < num_frames; i++) {
 		if(coremap_ptr[i].status == UNALLOCATED) {
@@ -169,7 +173,8 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 	if (!booting) lock_acquire(coremap_lock);
 
 	int need_to_free = frames_wanted - (num_frames - num_frames_in_use);
-
+	DEBUG(DB_VM,"Running kframe_alloc, frames: %d\n",num_frames_in_use);
+	kprintf("k: frames_in_use %d, total %d\n", num_frames_in_use, num_frames);
 	if(need_to_free > 0)
         {
 		for(int i = 0; i < need_to_free; i++)
@@ -183,10 +188,11 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
                         	return result;
                 	}
                 	swap_to_disk(pe);
+			num_frames_in_use--;
 		}
         }
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
-		if(rv)
+		if(!rv)
 			num_frames_in_use+=frames_wanted;
 	if (!booting) lock_release(coremap_lock);
 	return rv;
@@ -229,6 +235,7 @@ int coremap_get_rr_victim()
         int victim;
         static unsigned int next_victim = 0;
 
+	bool full = true;
         while(true)
         {
                 if(coremap_ptr[next_victim].status == USER)
@@ -236,27 +243,37 @@ int coremap_get_rr_victim()
 			victim = next_victim;
 			coremap_ptr[next_victim].status = UNALLOCATED;
                         next_victim = (next_victim + 1) % num_frames;
+			full = false;
 			break;
 		}
 		next_victim = (next_victim + 1) % num_frames;
 	}
+	
+	if(full)
+		panic("cannot find victim to swap\n");
 		
 	return victim;
 }
 
 int get_page_entry_victim(struct page_entry *ret, int victim)
-{
-	struct proc *victim_proc = proc_getby_pid(coremap_ptr[victim].pid);
+{	
+	struct proc *victim_proc;
+	struct lock *v_lock = proctable_lock_get();
+	lock_acquire(v_lock);
+	victim_proc = proc_getby_pid(coremap_ptr[victim].pid);
 	
 	struct segment *victim_seg;
 	
-	int result = as_which_seg(victim_proc->p_addrspace, coremap_ptr[victim].id << 12, &victim_seg);
-	
+	int result = as_which_seg(victim_proc->p_addrspace, (coremap_ptr[victim].id) * PAGE_SIZE, &victim_seg);
+	kprintf("va:%x\n", (coremap_ptr[victim].id) * PAGE_SIZE);	
 	if(result)
+	{
+		lock_release(v_lock);
 		return result;
+	}
 		
 	ret = &victim_seg->pagetable[coremap_ptr[victim].id - victim_seg->vbase];
-	
+	lock_release(v_lock);
 	return 0;
 }
 	

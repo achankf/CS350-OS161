@@ -2,10 +2,71 @@
 #include <lib.h>
 #include <kern/errno.h>
 #include <vm.h>
+#include <vnode.h>
 #include <current.h>
+#include <uio.h>
 #include <coremap.h>
 #include <proc.h>
 #include <swapfile.h>
+#include <elf.h>
+#include <addrspace.h>
+
+static
+int
+load_segment(struct addrspace *as, struct vnode *v,
+	     off_t offset, vaddr_t vaddr, 
+	     size_t memsize, size_t filesize,
+	     int is_executable)
+{
+	KASSERT(vaddr < 0x80000000);
+	DEBUG(DB_VM, "Running load segment %p, size %d\n", (void*)vaddr, memsize);
+
+	struct iovec iov;
+	struct uio u;
+	int result;
+
+	if (filesize > memsize) {
+		kprintf("ELF: warning: segment filesize > segment memsize\n");
+		filesize = memsize;
+	}
+
+	DEBUG(DB_EXEC, "ELF: Loading %lu bytes to 0x%lx\n", (unsigned long) filesize, (unsigned long) vaddr);
+
+	struct segment *seg;
+	paddr_t kpaddr;
+	result = as_which_seg(as, vaddr, &seg);
+	if (result) return result;
+	result = seg_translate(seg, vaddr, &kpaddr);
+	if (result) return result;
+
+	(void) is_executable;
+	iov.iov_ubase = (userptr_t)PADDR_TO_KVADDR(kpaddr);
+	iov.iov_len = memsize;		 // length of the memory space
+	u.uio_iov = &iov;
+	u.uio_iovcnt = 1;
+	u.uio_resid = filesize;          // amount to read from the file
+	u.uio_offset = offset;
+	u.uio_segflg = UIO_SYSSPACE;// is_executable ? UIO_USERISPACE : UIO_USERSPACE;
+	u.uio_rw = UIO_READ;
+	u.uio_space = NULL;
+
+	DEBUG(DB_VM,"ELF loading segment into %p(%p) as %p\n", (void*)PADDR_TO_KVADDR(kpaddr), (void*) kpaddr,(void*)vaddr);
+
+	result = VOP_READ(v, &u);
+	if (result) {
+		return result;
+	}
+
+	DEBUG(DB_VM, "\tDone loading\n");
+
+	if (u.uio_resid != 0) {
+		/* short read; problem with executable? */
+		kprintf("ELF: short read on segment - file truncated?\n");
+		return ENOEXEC;
+	}
+	
+	return result;
+}
 
 bool seg_is_inited(struct segment *seg){
 	KASSERT(seg != NULL);
@@ -15,8 +76,6 @@ bool seg_is_inited(struct segment *seg){
 int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npages, bool R, bool W, bool X){
 	KASSERT(seg != NULL);
 	KASSERT(as != NULL);
-
-	bzero(seg, sizeof(struct segment));
 
 	seg->pagetable = kmalloc(npages * sizeof(struct page_entry));
 	if (seg->pagetable == NULL) return ENOMEM;
@@ -41,6 +100,42 @@ void seg_cleanup(struct segment *seg){
 	kfree(seg->pagetable);
 }
 
+int seg_ondemand_load(struct segment *seg, int idx){
+	DEBUG(DB_VM,"On-demanding page loading on index %d\n", idx);
+	int result = uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
+	if (result) return result;
+	seg->pagetable[idx].alloc = true;
+
+	DEBUG(DB_VM,"\tDone allocation, segment %p loading on demand? %d\n", seg, seg->ondemand);
+
+	if (!seg->ondemand) return 0; // let process to write
+
+	int idx_offset = idx * PAGE_SIZE;
+
+	DEBUG(DB_VM,"\tProcess to be read vnode %p, offset:%x\n", seg->as->v, idx_offset);
+	// text/data segment -- load on demand
+#if 1
+	result = load_segment(seg->as,
+		seg->as->v,
+		seg->ph.p_offset + idx_offset,
+		seg->vbase + idx_offset,
+		PAGE_SIZE,
+		seg->ph.p_filesz - idx_offset,
+		seg->ph.p_flags & PF_X);
+#endif
+	(void)load_segment;
+	if (result) return result;
+
+/*
+-               result = load_segment(as, v, ph.p_offset, ph.p_vaddr, 
+-                                     ph.p_memsz, ph.p_filesz,
+-                                     ph.p_flags & PF_X);
+
+*/
+	
+	return 0;
+}
+
 int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	KASSERT(seg != NULL);
 	KASSERT(seg_in_range(seg, vaddr));
@@ -57,14 +152,13 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	DEBUG(DB_VM,"\tindex values %x, vpn %x, vbase %x\n", idx, vpn,ADDR_MAPPING_NUM(seg->vbase));
 
 	if(!seg->pagetable[idx].alloc){
-		DEBUG(DB_VM,"\tOn-demanding page loading on vpn %d\n", idx);
-		uframe_alloc1(&seg->pagetable[idx].pfn, curproc->pid, idx);
-		seg->pagetable[idx].alloc = true;
+		seg_ondemand_load(seg, idx);
 		DEBUG(DB_VM,"\tFrame %d allocated for vpn %x (index:%d)\n", seg->pagetable[idx].pfn, vpn, idx);
 	}
 
 	if (seg->pagetable[idx].being_swapped){
-		rv = swap_to_mem(curproc->pid, vpn);
+		DEBUG(DB_VM,"Swapping in %d\n", idx);
+		rv = swap_to_mem(curproc->pid, vpn); // swap back
 		if (rv) {
 			return rv;
 		}
@@ -82,5 +176,5 @@ bool seg_in_range(struct segment *seg, vaddr_t vaddr){
 	int vpn = ADDR_MAPPING_NUM(vaddr);
 	int vpn_max = ADDR_MAPPING_NUM((seg->vbase + seg->npages * PAGE_SIZE));
 	int vpn_min = ADDR_MAPPING_NUM(seg->vbase);
-	return vpn >= vpn_min && vpn <= vpn_max;
+	return vpn >= vpn_min && vpn < vpn_max;
 }

@@ -34,7 +34,9 @@
 #include <segment.h>
 #include <spl.h>
 #include <mips/tlb.h>
+#include <elf.h>
 #include <vm.h>
+#include <vfs.h>
 #ifdef UW
 #include <proc.h>
 #endif
@@ -111,6 +113,7 @@ as_destroy(struct addrspace *as)
 	for (int i = 0; i < NUM_SEGS; i++){
 		seg_cleanup(&as->segs[i]);
 	}
+	vfs_close(as->v);
 	kfree(as);
 }
 
@@ -210,7 +213,8 @@ as_complete_load(struct addrspace *as)
 int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
-	(void)as;
+	as->segs[STACK].ondemand = false;
+	bzero(&(as->segs[STACK].ph), sizeof(Elf_Phdr));
 
 	/* Initial user-level stack pointer */
 	*stackptr = USERSTACK - PAGE_SIZE;
@@ -222,6 +226,7 @@ as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 int as_which_seg(struct addrspace *as, vaddr_t vaddr, struct segment **ret){
 	for (int j = 0; j < NUM_SEGS; j++){
 		KASSERT(seg_is_inited(&as->segs[j]));
+		DEBUG(DB_VM,"Checking vaddr %p, seg:%p, segment base:%p, segment size:%d\n", (void*)vaddr, &as->segs[j], (void*)as->segs[j].vbase, as->segs[j].npages);
 		if (!seg_in_range(&as->segs[j], vaddr)) continue;
 		*ret = &as->segs[j];
 		return 0;

@@ -22,4 +22,5 @@ int coremap_show(int nargs, char **args);
 int get_page_entry_victim(struct page_entry *ret, int victim);
 bool coremap_is_full(void);
 int coremap_get_rr_victim(void);
+int core_kickvictim(int *victim);
 #endif

@@ -47,10 +47,15 @@ int swapfile_init()
 	char *swapfile_path = kstrdup("SWAPFILE");
 	int result = vfs_open(swapfile_path, O_RDWR|O_CREAT|O_TRUNC, 0, &swapfile);
 	kfree(swapfile_path);        
-	if(result)
-                return 1;
 
         return result;
+}
+
+void swapfile_close()
+{
+	lock_acquire(swap_lock);
+	vfs_close(swapfile);
+	lock_release(swap_lock);
 }
 
 

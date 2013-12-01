@@ -127,16 +127,28 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 
 	DEBUG(DB_VM,"Running uframe_alloc1\n");
 	lock_acquire(coremap_lock);
-		for(int i = 0; i < num_frames; i++) {
-			if(coremap_ptr[i].status == UNALLOCATED) {
-				set_frame(i, USER, pid, id);
-				*frame = i;
-				ret = 0;
-				ZERO_OUT_FRAME(*frame);
-				num_frames_in_use++;
-				break;
-			}
+	if(coremap_is_full())
+	{
+		int victim = coremap_get_rr_victim();
+		struct page_entry *pe;
+		int result = get_page_entry_victim(pe, victim);
+		if(result)
+		{
+			lock_release(coremap_lock);
+			return result;
 		}
+		swap_to_disk(pe);
+	}
+	for(int i = 0; i < num_frames; i++) {
+		if(coremap_ptr[i].status == UNALLOCATED) {
+			set_frame(i, USER, pid, id);
+			*frame = i;
+			ret = 0;
+			ZERO_OUT_FRAME(*frame);
+			num_frames_in_use++;
+			break;
+		}
+	}
 	lock_release(coremap_lock);
 
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
@@ -155,6 +167,24 @@ int kframe_alloc(int *frame, int id, int frames_wanted)
 	int rv;
 
 	if (!booting) lock_acquire(coremap_lock);
+
+	int need_to_free = frames_wanted - (num_frames - num_frames_in_use);
+
+	if(need_to_free > 0)
+        {
+		for(int i = 0; i < need_to_free; i++)
+		{
+                	int victim = coremap_get_rr_victim();
+                	struct page_entry *pe;
+                	int result = get_page_entry_victim(pe, victim);
+                	if(result)
+               	 	{
+                        	lock_release(coremap_lock);
+                        	return result;
+                	}
+                	swap_to_disk(pe);
+		}
+        }
 		rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
 		if(rv)
 			num_frames_in_use+=frames_wanted;
@@ -203,15 +233,15 @@ int coremap_get_rr_victim()
         {
                 if(coremap_ptr[next_victim].status == USER)
                 {
-						victim = next_victim;
-						coremap_ptr[next_victim].status = UNALLOCATED;
+			victim = next_victim;
+			coremap_ptr[next_victim].status = UNALLOCATED;
                         next_victim = (next_victim + 1) % num_frames;
-						break;
-				}
-				next_victim = (next_victim + 1) % num_frames;
+			break;
 		}
+		next_victim = (next_victim + 1) % num_frames;
+	}
 		
-		return victim;
+	return victim;
 }
 
 int get_page_entry_victim(struct page_entry *ret, int victim)

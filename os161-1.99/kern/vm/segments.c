@@ -26,7 +26,7 @@ load_segment(struct addrspace *as, struct vnode *v,
 	int result;
 
 	if (filesize > memsize) {
-		kprintf("ELF: warning: segment filesize > segment memsize\n");
+		DEBUG(DB_VM,"ELF: warning: segment filesize > segment memsize\n");
 		filesize = memsize;
 	}
 
@@ -59,12 +59,6 @@ load_segment(struct addrspace *as, struct vnode *v,
 
 	DEBUG(DB_VM, "\tDone loading\n");
 
-	if (u.uio_resid != 0) {
-		/* short read; problem with executable? */
-		kprintf("ELF: short read on segment - file truncated?\n");
-		return ENOEXEC;
-	}
-	
 	return result;
 }
 
@@ -111,28 +105,19 @@ int seg_ondemand_load(struct segment *seg, int idx){
 	if (!seg->ondemand) return 0; // let process to write
 
 	int idx_offset = idx * PAGE_SIZE;
+	int fsize = seg->ph.p_filesz - idx_offset;
+	DEBUG(DB_VM,"\tProcess to be read vnode %p, offset:%x, size:%d\n", seg->as->v, idx_offset, fsize);
+	if (fsize <= 0) return 0;
 
-	DEBUG(DB_VM,"\tProcess to be read vnode %p, offset:%x\n", seg->as->v, idx_offset);
 	// text/data segment -- load on demand
-#if 1
 	result = load_segment(seg->as,
 		seg->as->v,
 		seg->ph.p_offset + idx_offset,
 		seg->vbase + idx_offset,
 		PAGE_SIZE,
-		seg->ph.p_filesz - idx_offset,
+		fsize,
 		seg->ph.p_flags & PF_X);
-#endif
-	(void)load_segment;
 	if (result) return result;
-
-/*
--               result = load_segment(as, v, ph.p_offset, ph.p_vaddr, 
--                                     ph.p_memsz, ph.p_filesz,
--                                     ph.p_flags & PF_X);
-
-*/
-	
 	return 0;
 }
 
@@ -152,7 +137,10 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	DEBUG(DB_VM,"\tindex values %x, vpn %x, vbase %x\n", idx, vpn,ADDR_MAPPING_NUM(seg->vbase));
 
 	if(!seg->pagetable[idx].alloc){
-		seg_ondemand_load(seg, idx);
+		rv = seg_ondemand_load(seg, idx);
+		if (rv){
+			return rv;
+		}
 		DEBUG(DB_VM,"\tFrame %d allocated for vpn %x (index:%d)\n", seg->pagetable[idx].pfn, vpn, idx);
 	}
 

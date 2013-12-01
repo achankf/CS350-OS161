@@ -176,16 +176,6 @@ load_elf(struct vnode *v, vaddr_t *entrypoint)
 	as->eh = eh; // deep copy
 	as->v = v;
 
-	result = as_prepare_load(as);
-	if (result) {
-		return result;
-	}
-
-	result = as_complete_load(as);
-	if (result) {
-		return result;
-	}
-
 	*entrypoint = eh.e_entry;
 
 	DEBUG(DB_VM,"------FINISHED LOAD_ELF-------- %p\n", (void*) entrypoint);

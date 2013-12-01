@@ -140,20 +140,20 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 		num_frames_in_use--;
 	}
 
-		// start search from the MIDDLE of the coremap
-		int idx = num_frames >> 1;
-		for(int i = 0; i < num_frames; i++) {
-			if(coremap_ptr[idx].status == UNALLOCATED) {
-				set_frame(idx, USER, pid, id);
-				*frame = idx;
-				ret = 0;
-				ZERO_OUT_FRAME(*frame);
-				num_frames_in_use++;
-				break;
-			}
-			idx = (idx + 1) % num_frames;
+	// start search from the MIDDLE of the coremap
+	int idx = num_frames >> 1;
+	for(int i = 0; i < num_frames; i++) {
+		if(coremap_ptr[idx].status == UNALLOCATED) {
+			set_frame(idx, USER, pid, id);
+			*frame = idx;
+			ret = 0;
+			ZERO_OUT_FRAME(*frame);
+			num_frames_in_use++;
+			break;
 		}
+		idx = (idx + 1) % num_frames;
 	}
+	
 	lock_release(coremap_lock);
 
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);

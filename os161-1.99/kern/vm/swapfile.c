@@ -31,8 +31,19 @@ struct lock * swap_lock;
 struct id_generator*idgen;
 struct vnode *swapfile;
 
+
+static void swaptable_init() {
+    if (swap_lock == NULL) {
+        swap_lock = lock_create("swap_lock");
+    }
+    bzero(swaptable, SWAP_SIZE);
+    idgen = idgen_create(0);
+}
+
+
 int swapfile_init()
 {
+	swaptable_init();
 	char *swapfile_path = kstrdup("SWAPFILE");
 	int result = vfs_open(swapfile_path, O_RDWR|O_CREAT|O_TRUNC, 0, &swapfile);
 	kfree(swapfile_path);        
@@ -42,17 +53,10 @@ int swapfile_init()
         return result;
 }
 
-void swaptable_init() {
-    if (swap_lock == NULL) {
-        swap_lock = lock_create("swap_lock");
-    }
-    bzero(swaptable, SWAP_SIZE);
-    idgen = idgen_create(0);
-}
-
 
 int swap_to_disk (struct page_entry *pe)
 {
+	lock_acquire(swap_lock);
 	pe->being_swapped = true;
 	paddr_t pa = pe->pfn * PAGE_SIZE;
 	struct iovec iov;
@@ -72,6 +76,7 @@ int swap_to_disk (struct page_entry *pe)
 	}
 	if(full)
 	{
+		lock_release(swap_lock);
 		panic("The swap file is full");
 	}
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
@@ -79,14 +84,16 @@ int swap_to_disk (struct page_entry *pe)
 
 	if(result)
 	{
+		lock_release(swap_lock);
 		return result;
 	}		
-
+	lock_release(swap_lock);
 	return 0;
 }
 
 int swap_to_mem (struct page_entry *pe, int apfn)
 {
+	lock_acquire(swap_lock);
 	pe->being_swapped = false;
 	struct iovec iov;
 	struct uio ku;
@@ -97,12 +104,14 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 
 	if(result)
 	{
+		lock_release(swap_lock);
 		return result;
 	}
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
 
+	lock_release(swap_lock);
 	return 0;
 }
 	

@@ -122,7 +122,7 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 	int ret = 1;
 	DEBUG(DB_VM,"Running uframe_alloc1, frames: %d\n",num_frames_in_use);
 	lock_acquire(coremap_lock);
-	kprintf("u: frames_in_use %d, total %d\n", num_frames_in_use, num_frames);
+	DEBUG(DB_VM,"u: frames_in_use %d, total %d\n", num_frames_in_use, num_frames);
 	if(coremap_is_full())
 	{
 		ret = core_kickvictim(frame);
@@ -208,7 +208,7 @@ int kframe_alloc(int *frame, int frames_wanted)
                 {
                         int victim = coremap_get_rr_victim();
                         struct page_entry *pe;
-                        int result = get_page_entry_victim(pe, victim);
+                        int result = get_page_entry_victim(&pe, victim);
                         if(result)
                         {
                                 lock_release(coremap_lock);
@@ -292,7 +292,7 @@ int coremap_get_rr_victim()
 	return victim;
 }
 
-int get_page_entry_victim(struct page_entry *ret, int victim)
+int get_page_entry_victim(struct page_entry **ret, int victim)
 {	
 	struct proc *victim_proc;
 	struct lock *v_lock = proctable_lock_get();
@@ -302,27 +302,24 @@ int get_page_entry_victim(struct page_entry *ret, int victim)
 	struct segment *victim_seg;
 	
 	int result = as_which_seg(victim_proc->p_addrspace, (coremap_ptr[victim].id) << 12, &victim_seg);
-	if(result)
-	{
-		lock_release(v_lock);
-		return result;
-	}
-		
-	ret = &victim_seg->pagetable[coremap_ptr[victim].id - victim_seg->vbase];
+	if(result) goto ENDOF_GET_VICTIM;
+	int vpn = coremap_ptr[victim].id - ADDR_MAPPING_NUM(victim_seg->vbase);
+	*ret = &victim_seg->pagetable[vpn];
+
+ENDOF_GET_VICTIM:
 	lock_release(v_lock);
-	return 0;
+	return result;
 }
 
 int core_kickvictim(int *ret)
 {
 	int victim = coremap_get_rr_victim();
 	struct page_entry *pe;
-	kprintf("full, victim is %d\n", victim);
-	int result = get_page_entry_victim(pe, victim);
-	kprintf("back from page_entry, result = %d\n", result);
+	//kprintf("full, victim is %d\n", victim);
+	int result = get_page_entry_victim(&pe, victim);
+	//kprintf("back from page_entry %p, result = %d\n", pe, result);
 	if(result)
 	{
-		lock_release(coremap_lock);
 		return result;
 	}
 	swap_to_disk(pe);

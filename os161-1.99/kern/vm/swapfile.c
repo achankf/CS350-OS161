@@ -28,6 +28,18 @@ struct lock * swap_lock;
 // the number of swap entries in side the swap table
 
 struct id_generator*idgen;
+struct vnode *swapfile;
+
+int swapfile_init()
+{
+        int result = vfs_open("SWAPFILE", O_RDWR|O_CREAT|O_TRUNC, 0, &swapfile);
+        if(result)
+                return 1;
+
+        return result;
+}
+
+
 
 void swaptable_init() {
     if (swap_lock == NULL) {
@@ -38,10 +50,15 @@ void swaptable_init() {
 
 }
 
+int swap_to_disk ()
+{
+	
+
+
 int swap_to_disk (pid_t pid, int *id){
     (void) pid;
     (void) id;
-#if 0 
+//#if 0 
     lock_acquire(swap_lock);
 
     // write swap entry to our swap file, but limit it to 9MB

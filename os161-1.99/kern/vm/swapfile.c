@@ -63,6 +63,7 @@ void swapfile_close()
 
 int swap_to_disk (struct page_entry *pe)
 {
+	kprintf("Swapping to disk...\n");
 	lock_acquire(swap_lock);
 	pe->being_swapped = true;
 	paddr_t pa = pe->pfn * PAGE_SIZE;
@@ -86,9 +87,10 @@ int swap_to_disk (struct page_entry *pe)
 		lock_release(swap_lock);
 		panic("The swap file is full");
 	}
+	kprintf("Preparing to write\n");
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
 	int result = VOP_WRITE(swapfile, &ku);
-	DEBUG(DB_VM,"swapped index %d to disk.\n", pe->swap_index);
+	kprintf("swapped index %d to disk.\n", pe->swap_index);
 	if(result)
 	{
 		lock_release(swap_lock);
@@ -101,6 +103,7 @@ int swap_to_disk (struct page_entry *pe)
 
 int swap_to_mem (struct page_entry *pe, int apfn)
 {
+	kprintf("Swapping to Mem...\n");
 	lock_acquire(swap_lock);
 	pe->being_swapped = false;
 	struct iovec iov;

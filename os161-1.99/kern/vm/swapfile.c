@@ -13,6 +13,7 @@
 #include <swapfile.h>
 #include <id_generator.h>
 #include <coremap.h>
+#include <uw-vmstats.h>
 
 #define SWAP_SIZE 2304 
 
@@ -50,6 +51,10 @@ void swaptable_init() {
     idgen = idgen_create(0);
 }
 
+void swaptable_destroy() {
+    vfs_close(swapfile);
+}
+
 
 int swap_to_disk (struct page_entry *pe)
 {
@@ -81,7 +86,7 @@ int swap_to_disk (struct page_entry *pe)
 	{
 		return result;
 	}		
-
+    vmstats_inc(9);
 	return 0;
 }
 
@@ -102,7 +107,7 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
-
+    vmstats_inc(8);
 	return 0;
 }
 	

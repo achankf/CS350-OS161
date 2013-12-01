@@ -5,6 +5,7 @@ struct swap_entry;
 
 void swaptable_init(void);
 int swapfile_init(void);
+void swaptable_destroy(void);
 int swap_to_disk(struct page_entry *pe);
 int swap_to_mem(struct page_entry *pe, int apfn);
 

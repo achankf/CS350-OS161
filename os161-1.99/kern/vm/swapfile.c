@@ -11,14 +11,14 @@
 #include <vnode.h>
 #include <uio.h>
 #include <swapfile.h>
-#include <id_generator.h>
+// #include <id_generator.h>
 #include <coremap.h>
 #include <uw-vmstats.h>
 
 #define SWAP_SIZE 2304 
 
 struct swap_entry {
-	bool part_of_pt;
+	// bool part_of_pt; probably not needed
 	pid_t pid;
 	int id;
 	bool used;
@@ -29,7 +29,7 @@ struct swap_entry swaptable[SWAP_SIZE];
 struct lock * swap_lock;
 // the number of swap entries in side the swap table
 
-struct id_generator*idgen;
+// struct id_generator*idgen;
 struct vnode *swapfile;
 
 int swapfile_init()
@@ -48,7 +48,7 @@ void swaptable_init() {
         swap_lock = lock_create("swap_lock");
     }
     bzero(swaptable, SWAP_SIZE);
-    idgen = idgen_create(0);
+    // idgen = idgen_create(0);
 }
 
 void swaptable_destroy() {
@@ -107,8 +107,9 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
-    vmstats_inc(8);
-	return 0;
+    vmstats_inc(6); // Page Faults (Disk)
+	vmstats_inc(8); // Page Faults from Swapfile
+    return 0;
 }
 	
 /*

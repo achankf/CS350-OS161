@@ -282,7 +282,7 @@ file      lib/kgets.c
 file      lib/kprintf.c
 file      lib/misc.c
 file      lib/uio.c
-file			lib/id_generator.c
+file	  lib/id_generator.c
 # UW Mod
 file      lib/queue.c
 
@@ -338,8 +338,8 @@ file      thread/threadlist.c
 
 file      vm/kmalloc.c
 file	  vm/coremap.c
-file		vm/swapfile.c
-file		vm/segments.c
+file	  vm/swapfile.c
+file	  vm/segments.c
 # UW Mod
 defoption vm
 optfile   vm   vm/vm.c

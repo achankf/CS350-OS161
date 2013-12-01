@@ -197,20 +197,6 @@ as_define_region(struct addrspace *as, vaddr_t vaddr, size_t sz,
 }
 
 int
-as_prepare_load(struct addrspace *as)
-{
-	(void)as;
-	return 0;
-}
-
-int
-as_complete_load(struct addrspace *as)
-{
-	(void)as;
-	return 0;
-}
-
-int
 as_define_stack(struct addrspace *as, vaddr_t *stackptr)
 {
 	as->segs[STACK].ondemand = false;

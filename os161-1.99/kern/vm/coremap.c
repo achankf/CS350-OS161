@@ -118,6 +118,18 @@ coremap_init()
 	bzero(coremap_ptr, coremap_size);
 }
 
+void core_sweep(pid_t pid){
+	KASSERT(pid != 0); // NEVER sweep kernel internal memory
+
+	int num_sweeped = 0;
+	for (int i = 0; i < num_frames; i++){
+		if (coremap_ptr[i].pid != pid) continue;
+		set_frame(i, UNALLOCATED, 0,0);
+		num_sweeped++;
+	}
+	kprintf("%d frames being swept\n", num_sweeped);
+}
+
 int
 uframe_alloc1(int *frame, pid_t pid, int id)
 {
@@ -147,8 +159,6 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 UFRAME_ALLOC1_FINISH:
 	lock_release(coremap_lock);
 	ZERO_OUT_FRAME(*frame);
-kprintf("uframe %d allocated\n", *frame);
-
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
 	return ret;
 }
@@ -164,14 +174,12 @@ void frame_free(int frame)
 		if (pid != 0) {
 			KASSERT(curproc->pid == pid);
 			set_frame(frame, UNALLOCATED, 0,0);
-kprintf("freeing %d\n", frame);
 			ZERO_OUT_FRAME(frame);
 			goto FRAME_FREE_DONE;
 		}
 		for (int i = 0; i < num_frames; i++){
 			if (coremap_ptr[i].pid != 0 || coremap_ptr[i].id != id) continue;
 			set_frame(i, UNALLOCATED, 0,0);
-kprintf("freeing %d\n", frame);
 			ZERO_OUT_FRAME(i);
 			if (id_not_used != NULL){ // recycle id's for kernel memory
 				q_addtail(id_not_used, (void*)id);
@@ -221,7 +229,6 @@ int kframe_alloc(int *frame, int frames_wanted)
 			}
 	if (!booting) lock_release(coremap_lock);
 
-kprintf("kframe %d allocated\n", *frame);
 	return rv;
 }
 

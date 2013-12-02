@@ -15,11 +15,13 @@ main()
 	unsigned int i = 0;
 	unsigned int refs = 0;
 
+printf("part a\n");
 	for (refs = 0; refs < NUM_REFS-1; refs++) {
 		for (i=0; i<SIZE; i++) {
 			array[i] = i;
 		}
 	}
+printf("part b\n");
 
 	for (i=0; i<SIZE; i++) {
 		if (array[i] != i) {
@@ -27,6 +29,7 @@ main()
 			exit(1);
 		}
 	}
+printf("part c\n");
 
 	printf("SUCCEEDED\n");
 	exit(0);

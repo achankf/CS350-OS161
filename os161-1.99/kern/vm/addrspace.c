@@ -36,7 +36,9 @@
 #include <mips/tlb.h>
 #include <elf.h>
 #include <vm.h>
+#include <coremap.h>
 #include <vfs.h>
+#include <current.h>
 #ifdef UW
 #include <proc.h>
 #endif
@@ -113,6 +115,7 @@ as_destroy(struct addrspace *as)
 	for (int i = 0; i < NUM_SEGS; i++){
 		seg_cleanup(&as->segs[i]);
 	}
+	core_sweep(curproc->pid);
 	vfs_close(as->v);
 	kfree(as);
 }

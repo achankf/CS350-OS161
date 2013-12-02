@@ -193,6 +193,7 @@ void
 lock_acquire(struct lock *lock)
 {
         KASSERT(lock != NULL);
+				KASSERT(!lock_do_i_hold(lock)); // deadlock
         
         // kassert if interupts are off
         KASSERT(curthread->t_in_interrupt == false);

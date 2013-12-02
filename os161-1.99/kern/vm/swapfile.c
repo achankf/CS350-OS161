@@ -35,11 +35,9 @@ struct vnode *swapfile;
 
 
 static void swaptable_init() {
-    if (swap_lock == NULL) {
-        swap_lock = lock_create("swap_lock");
-    }
-    bzero(swaptable, SWAP_SIZE);
-    // idgen = idgen_create(0);
+	swap_lock = lock_create("swap_lock");
+	KASSERT(swap_lock != NULL);
+	bzero(swaptable, SWAP_SIZE);
 }
 
 
@@ -60,14 +58,15 @@ void swapfile_close()
 
 int swap_to_disk (struct page_entry *pe)
 {
-	lock_acquire(swap_lock);
-	pe->swapped = true;
-	paddr_t pa = pe->pfn * PAGE_SIZE;
 	struct iovec iov;
 	struct uio ku;
 	int offset;
 	bool full = true;
-	int result;
+	int result = 0;
+
+	lock_acquire(swap_lock);
+	pe->swapped = true;
+	paddr_t pa = pe->pfn * PAGE_SIZE;
 	for(int i = 0; i < SWAP_SIZE; i++)
 	{
 		if(!swaptable[i].used)
@@ -79,9 +78,7 @@ int swap_to_disk (struct page_entry *pe)
 			break;
 		}
 	}
-	if(full)
-	{
-		lock_release(swap_lock);
+	if(full) {
 		panic("The swap file is full");
 	}
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
@@ -93,7 +90,6 @@ int swap_to_disk (struct page_entry *pe)
 END_OF_SWAP_TO_DISK:
 	lock_release(swap_lock);
 	return result;
-
 }
 
 int swap_to_mem (struct page_entry *pe, int apfn)
@@ -107,16 +103,13 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_READ);
 	int result = VOP_READ(swapfile, &ku);
 
-	if(result)
-	{
-		lock_release(swap_lock);
-		return result;
-	}
+	if(result) goto END_OF_SWAP_TO_MEM;
 
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
-    	vmstats_inc(6); // Page Faults (Disk)
+	vmstats_inc(6); // Page Faults (Disk)
 	vmstats_inc(8); // Page Faults from Swapfile
+END_OF_SWAP_TO_MEM:
 	lock_release(swap_lock);
-    	return 0;
+ 	return result;
 }

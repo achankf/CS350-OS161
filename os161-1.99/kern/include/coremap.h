@@ -8,6 +8,7 @@ void coremap_init(void);
 int kframe_alloc(int *frame, int frames_wanted);
 int uframe_alloc1(int *frame, pid_t pid, int id); // alloc one frame
 void frame_free(int frame);
+void core_sweep(pid_t pid);
 
 // frame-to-kvaddr translation
 paddr_t frame_to_paddr(int frame);

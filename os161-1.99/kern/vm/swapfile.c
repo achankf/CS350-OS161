@@ -13,6 +13,7 @@
 #include <swapfile.h>
 #include <current.h>
 #include <proc.h>
+#include <mips/tlb.h>
 #include <uw-vmstats.h>
 
 #define SWAP_FILE_SIZE_IN_MB (9)
@@ -63,8 +64,18 @@ void swapfile_close()
 	vfs_close(swapfile);
 }
 
+void tlb_invalid(int vpn){
+	vaddr_t vaddr = vpn << 12;
+	int i = tlb_probe(vaddr,0);
+//kprintf("%x i:%d\n" , vpn,i);
+	//KASSERT(i > 0);
+	if (i >= 0){
+//kprintf("HIT %x %x i:%d\n" , vaddr, vpn,i);
+		tlb_write(TLBHI_INVALID(i), TLBLO_INVALID(), i);
+	}
+}
 
-int swap_to_disk (struct page_entry *pe)
+int swap_to_disk (int vpn, struct page_entry *pe)
 {
 	struct iovec iov;
 	struct uio ku;
@@ -90,15 +101,14 @@ int swap_to_disk (struct page_entry *pe)
 SWAP_TO_DISK_NOT_FULL:
 
 	pa = PADDR_TO_KVADDR(frame_to_paddr(pe->pfn));
-kprintf("\n%x writting %p into swap\n", pe->pfn, (void*)pa);
-	char dummy[PAGE_SIZE];
-	bzero(dummy, PAGE_SIZE);
+//kprintf("\n%x writting %p into swap\n", pe->pfn, (void*)pa);
 
-	uio_kinit(&iov, &ku, dummy, PAGE_SIZE, offset, UIO_WRITE);
 	uio_kinit(&iov, &ku, (void *)pa, PAGE_SIZE, offset, UIO_WRITE);
 	result = VOP_WRITE(swapfile, &ku);
 	DEBUG(DB_VM,"swapped index %d to disk.\n", pe->swap_index);
 	if(result) goto END_OF_SWAP_TO_DISK;
+//kprintf("STD\n");
+	tlb_invalid(vpn);
 	pe->swapped = true;
 	vmstats_inc(9);
 
@@ -107,8 +117,9 @@ END_OF_SWAP_TO_DISK:
 	return result;
 }
 
-int swap_to_mem (struct page_entry *pe, int apfn)
+int swap_to_mem (int vpn, struct page_entry *pe, int apfn)
 {
+	(void) vpn;
 	struct iovec iov;
 	struct uio ku;
 
@@ -116,13 +127,14 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 	pe->swapped = false;
 	int offset = pe->swap_index * PAGE_SIZE;
 	paddr_t pa = PADDR_TO_KVADDR(frame_to_paddr(apfn));
-	bzero((void*)pa, PAGE_SIZE);
 
 	uio_kinit(&iov, &ku, (void *)pa, PAGE_SIZE, offset, UIO_READ);
 	int result = VOP_READ(swapfile, &ku);
 
 	if(result) goto END_OF_SWAP_TO_MEM;
 
+//kprintf("STM\n");
+	tlb_invalid(frame_to_vpn(apfn));
 	pe->pfn = apfn;
 	swaptable[pe->swap_index].used = false;
 	vmstats_inc(6); // Page Faults (Disk)

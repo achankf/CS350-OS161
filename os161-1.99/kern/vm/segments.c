@@ -150,7 +150,7 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 			if (result) return result;
 		}
 		seg->pagetable[idx].pfn = frame;
-		rv = swap_to_mem(&seg->pagetable[idx], frame); // swap back
+		rv = swap_to_mem(vpn, &seg->pagetable[idx], frame); // swap back
 		if (rv) {
 			return rv;
 		}

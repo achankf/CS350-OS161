@@ -279,6 +279,7 @@ int coremap_get_rr_victim()
 
 int get_page_entry_victim(struct page_entry **ret, int victim)
 {	
+	KASSERT(coremap_ptr[victim].pid != 0);
 	struct proc *victim_proc;
 	struct lock *v_lock = proctable_lock_get();
 	lock_acquire(v_lock);
@@ -288,8 +289,8 @@ int get_page_entry_victim(struct page_entry **ret, int victim)
 	
 	int result = as_which_seg(victim_proc->p_addrspace, (coremap_ptr[victim].id) << 12, &victim_seg);
 	if(result) goto ENDOF_GET_VICTIM;
-	int vpn = coremap_ptr[victim].id - ADDR_MAPPING_NUM(victim_seg->vbase);
-	*ret = &victim_seg->pagetable[vpn];
+	int idx = coremap_ptr[victim].id - ADDR_MAPPING_NUM(victim_seg->vbase);
+	*ret = &victim_seg->pagetable[idx];
 
 ENDOF_GET_VICTIM:
 	lock_release(v_lock);
@@ -299,6 +300,7 @@ ENDOF_GET_VICTIM:
 int core_kickvictim(int *ret)
 {
 	int victim = coremap_get_rr_victim();
+	int vpn = frame_to_vpn(victim);
 	struct page_entry *pe;
 	int result = get_page_entry_victim(&pe, victim);
 	if(result)
@@ -306,7 +308,13 @@ int core_kickvictim(int *ret)
 		return result;
 	}
 
-	swap_to_disk(pe);
+//kprintf("%d %x\n", coremap_ptr[victim].pid, coremap_ptr[victim].id);
+	swap_to_disk(vpn, pe);
 	*ret = victim;
 	return 0;
+}
+
+int frame_to_vpn(int frame){
+	KASSERT(coremap_ptr[frame].pid != 0);
+	return coremap_ptr[frame].id;
 }

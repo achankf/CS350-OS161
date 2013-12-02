@@ -13,6 +13,7 @@ int core_sweep(pid_t pid);
 // frame-to-kvaddr translation
 paddr_t frame_to_paddr(int frame);
 int kvaddr_to_frame(vaddr_t kvaddr);
+int frame_to_vpn(int frame);
 
 // initialize structs that depend on kmalloc
 void coremap_finalize(void);

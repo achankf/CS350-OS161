@@ -88,6 +88,9 @@ frame_alloc_continuous(int *frame, core_status_t status, pid_t pid, int id, int 
 	int rv = frame_find_continuous(frame, frames_wanted);
 	if (rv) return rv;
 	frame_range_mark(*frame, frames_wanted, status, pid, id);
+	for (int i = 0, idx = *frame; i < frames_wanted; i++, idx++){
+		ZERO_OUT_FRAME(idx);
+	}
 	return 0;
 }
 
@@ -137,13 +140,14 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 			set_frame(idx, USER, pid, id);
 			*frame = idx;
 			ret = 0;
-			ZERO_OUT_FRAME(*frame);
 			break;
 		}
 		idx = (idx + 1) % num_frames;
 	}
-	UFRAME_ALLOC1_FINISH:
+UFRAME_ALLOC1_FINISH:
 	lock_release(coremap_lock);
+	ZERO_OUT_FRAME(*frame);
+kprintf("uframe %d allocated\n", *frame);
 
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
 	return ret;
@@ -160,11 +164,15 @@ void frame_free(int frame)
 		if (pid != 0) {
 			KASSERT(curproc->pid == pid);
 			set_frame(frame, UNALLOCATED, 0,0);
+kprintf("freeing %d\n", frame);
+			ZERO_OUT_FRAME(frame);
 			goto FRAME_FREE_DONE;
 		}
 		for (int i = 0; i < num_frames; i++){
 			if (coremap_ptr[i].pid != 0 || coremap_ptr[i].id != id) continue;
 			set_frame(i, UNALLOCATED, 0,0);
+kprintf("freeing %d\n", frame);
+			ZERO_OUT_FRAME(i);
 			if (id_not_used != NULL){ // recycle id's for kernel memory
 				q_addtail(id_not_used, (void*)id);
 			}
@@ -193,29 +201,27 @@ int kframe_alloc(int *frame, int frames_wanted)
 				id = id_cur++;
 			}
 	}
-        int need_to_free = frames_wanted - coremap_has_space();
-        if(need_to_free > 0)
-        {
-                for(int i = 0; i < need_to_free; i++)
-                {
-                        int victim = coremap_get_rr_victim();
-                        struct page_entry *pe;
-                        int result = get_page_entry_victim(&pe, victim);
-                        if(result)
-                        {
-                                lock_release(coremap_lock);
-                                return result;
-                        }
-                        swap_to_disk(pe);
-                }
-        }
+			int need_to_free = frames_wanted - coremap_has_space();
+			if(need_to_free > 0) {
+				for(int i = 0; i < need_to_free; i++) {
+					int victim = coremap_get_rr_victim();
+					struct page_entry *pe;
+					int result = get_page_entry_victim(&pe, victim);
+					if(result) {
+						lock_release(coremap_lock);
+						return result;
+					}
+					swap_to_disk(pe);
+				}
+			}
 
-	rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
-	if (id_not_used != NULL) {
-		q_addtail(id_not_used, (void*)id);
-	}
+			rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
+			if (rv && id_not_used != NULL) {
+				q_addtail(id_not_used, (void*)id);
+			}
 	if (!booting) lock_release(coremap_lock);
 
+kprintf("kframe %d allocated\n", *frame);
 	return rv;
 }
 

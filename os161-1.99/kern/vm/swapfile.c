@@ -11,8 +11,8 @@
 #include <vnode.h>
 #include <uio.h>
 #include <swapfile.h>
-// #include <id_generator.h>
-#include <coremap.h>
+#include <current.h>
+#include <proc.h>
 #include <uw-vmstats.h>
 
 #define SWAP_FILE_SIZE_IN_MB (9)
@@ -20,7 +20,6 @@
 
 struct swap_entry {
 	pid_t pid;
-	int id;
 	bool used;
 };
 
@@ -29,14 +28,13 @@ struct swap_entry swaptable[SWAP_SIZE];
 struct lock * swap_lock;
 // the number of swap entries in side the swap table
 
-// struct id_generator*idgen;
 struct vnode *swapfile;
 
 
 static void swaptable_init() {
 	swap_lock = lock_create("swap_lock");
 	KASSERT(swap_lock != NULL);
-	bzero(swaptable, SWAP_SIZE);
+	bzero(swaptable, SWAP_SIZE * sizeof(struct swap_entry));
 }
 
 int swap_sweep(pid_t pid){
@@ -72,29 +70,36 @@ int swap_to_disk (struct page_entry *pe)
 	struct uio ku;
 	int offset;
 	int result = 0;
+	paddr_t pa;
 
 	lock_acquire(swap_lock);
-	pe->swapped = true;
-	paddr_t pa = pe->pfn * PAGE_SIZE;
 	for(int i = 0; i < SWAP_SIZE; i++)
 	{
 		if(!swaptable[i].used)
 		{
 			offset = i * PAGE_SIZE;
+			swaptable[i].pid = curproc->pid;
 			swaptable[i].used = true;
 			pe->swap_index = i;
 			goto SWAP_TO_DISK_NOT_FULL;
 		}
 	}
 
-	panic("The swap file is full");
+	panic("The swap file is full\n");
 
 SWAP_TO_DISK_NOT_FULL:
 
-	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_WRITE);
+	pa = PADDR_TO_KVADDR(frame_to_paddr(pe->pfn));
+kprintf("\n%x writting %p into swap\n", pe->pfn, (void*)pa);
+	char dummy[PAGE_SIZE];
+	bzero(dummy, PAGE_SIZE);
+
+	uio_kinit(&iov, &ku, dummy, PAGE_SIZE, offset, UIO_WRITE);
+	uio_kinit(&iov, &ku, (void *)pa, PAGE_SIZE, offset, UIO_WRITE);
 	result = VOP_WRITE(swapfile, &ku);
 	DEBUG(DB_VM,"swapped index %d to disk.\n", pe->swap_index);
 	if(result) goto END_OF_SWAP_TO_DISK;
+	pe->swapped = true;
 	vmstats_inc(9);
 
 END_OF_SWAP_TO_DISK:
@@ -110,8 +115,10 @@ int swap_to_mem (struct page_entry *pe, int apfn)
 	lock_acquire(swap_lock);
 	pe->swapped = false;
 	int offset = pe->swap_index * PAGE_SIZE;
-	paddr_t pa = apfn * PAGE_SIZE;
-	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_READ);
+	paddr_t pa = PADDR_TO_KVADDR(frame_to_paddr(apfn));
+	bzero((void*)pa, PAGE_SIZE);
+
+	uio_kinit(&iov, &ku, (void *)pa, PAGE_SIZE, offset, UIO_READ);
 	int result = VOP_READ(swapfile, &ku);
 
 	if(result) goto END_OF_SWAP_TO_MEM;

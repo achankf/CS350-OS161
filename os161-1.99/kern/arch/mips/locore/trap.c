@@ -110,9 +110,8 @@ kill_curthread(vaddr_t epc, unsigned code, vaddr_t vaddr)
 	}
 
 	kprintf("-----------------------------\n");
-	kprintf("Frodo has escaped from another orcish scout.\n");
-	kprintf("(user process killed, or should I say ``orcish'' process).\n");
-	kprintf("By the way, I'm looking forward into the second movie of the Hobbits.\n");
+	kprintf("Fatal user mode trap %u sig %d (%s, epc 0x%x, vaddr 0x%x)\n",
+		code, sig, trapcodenames[code], epc, vaddr);
 	kprintf("-----------------------------\n");
 
 	sys__exit(-1);

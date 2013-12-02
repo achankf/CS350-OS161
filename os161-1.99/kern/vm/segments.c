@@ -113,8 +113,7 @@ int seg_ondemand_load(struct segment *seg, int idx){
 		PAGE_SIZE,
 		fsize,
 		seg->ph.p_flags & PF_X);
-	if (result) return result;
-	return 0;
+	return result;
 }
 
 int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
@@ -146,8 +145,7 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 
 		// try to allocate memory before kicking out a frame
 		int result = uframe_alloc1(&frame, curproc->pid, vpn);
-		if(result)
-		{
+		if(result) {
 			result = core_kickvictim(&frame);	
 			if (result) return result;
 		}

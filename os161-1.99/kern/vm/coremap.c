@@ -134,6 +134,7 @@ int core_sweep(pid_t pid){
 int
 uframe_alloc1(int *frame, pid_t pid, int id)
 {
+
 	int ret = 1;
 	lock_acquire(coremap_lock);
 	if(coremap_has_space() == 0)
@@ -243,7 +244,7 @@ int coremap_show(int nargs, char **args){
 	int b = 0;
 	for (int i = 0; i < num_frames; i++){
 		if (b == 0) kprintf("\n| ");
-		kprintf("%3d:%3d (%3d,%3x) | ", i, coremap_ptr[i].status, coremap_ptr[i].pid, coremap_ptr[i].id);
+		kprintf("%3d:%3d (%3d,%5x) | ", i, coremap_ptr[i].status, coremap_ptr[i].pid, coremap_ptr[i].id);
 		b = (b+1) % 6;
 	}
 	kprintf("\n");
@@ -263,24 +264,17 @@ int coremap_has_space()
 	
 int coremap_get_rr_victim()
 {
-	int victim;
 	static unsigned int next_victim = 0;
 
-	bool full = true;
-	while(true) {
-		if(coremap_ptr[next_victim].status == USER) {
-			victim = next_victim;
-			next_victim = (next_victim + 1) % num_frames;
-			full = false;
-			break;
-		}
-		next_victim = (next_victim + 1) % num_frames;
+	int nvic = next_victim++;
+	for (int i = 0; i < num_frames; i++){
+		nvic = (nvic + i) % num_frames;
+		if(coremap_ptr[nvic].status != USER) continue;
+		return nvic;
 	}
 	
-	if(full)
-		panic("cannot find victim to swap\n");
-		
-	return victim;
+	panic("cannot find victim to swap\n");
+	return 0;
 }
 
 int get_page_entry_victim(struct page_entry **ret, int victim)
@@ -311,6 +305,7 @@ int core_kickvictim(int *ret)
 	{
 		return result;
 	}
+
 	swap_to_disk(pe);
 	*ret = victim;
 	return 0;

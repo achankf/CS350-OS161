@@ -118,16 +118,17 @@ coremap_init()
 	bzero(coremap_ptr, coremap_size);
 }
 
-void core_sweep(pid_t pid){
+int core_sweep(pid_t pid){
 	KASSERT(pid != 0); // NEVER sweep kernel internal memory
 
-	int num_sweeped = 0;
+	int count = 0;
 	for (int i = 0; i < num_frames; i++){
 		if (coremap_ptr[i].pid != pid) continue;
 		set_frame(i, UNALLOCATED, 0,0);
-		num_sweeped++;
+		ZERO_OUT_FRAME(i);
+		count++;
 	}
-	kprintf("%d frames being swept\n", num_sweeped);
+	return count;
 }
 
 int

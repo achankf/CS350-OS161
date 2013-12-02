@@ -74,6 +74,8 @@ int seg_init(struct segment *seg, struct addrspace *as, vaddr_t vbase, int npage
 	seg->pagetable = kmalloc(npages * sizeof(struct page_entry));
 	if (seg->pagetable == NULL) return ENOMEM;
 
+	bzero(seg->pagetable, npages * sizeof(struct page_entry));
+
 	seg->vbase = vbase & PAGE_FRAME;
 	seg->npages = npages;
 	seg->as = as;
@@ -141,6 +143,8 @@ int seg_translate(struct segment *seg, vaddr_t vaddr, paddr_t *ret){
 	if (seg->pagetable[idx].swapped){
 		DEBUG(DB_VM,"Swapping in %d\n", idx);
 		int frame;
+
+		// try to allocate memory before kicking out a frame
 		int result = uframe_alloc1(&frame, curproc->pid, vpn);
 		if(result)
 		{

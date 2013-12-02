@@ -38,6 +38,7 @@
 #include <vm.h>
 #include <coremap.h>
 #include <vfs.h>
+#include <swapfile.h>
 #include <current.h>
 #ifdef UW
 #include <proc.h>
@@ -115,7 +116,9 @@ as_destroy(struct addrspace *as)
 	for (int i = 0; i < NUM_SEGS; i++){
 		seg_cleanup(&as->segs[i]);
 	}
-	core_sweep(curproc->pid);
+	int cs = core_sweep(curproc->pid);
+	int ss = swap_sweep(curproc->pid);
+	kprintf("%d frames being swept from core, %d frames being swept from swap\n", cs, ss);
 	vfs_close(as->v);
 	kfree(as);
 }

@@ -40,6 +40,17 @@ static void swaptable_init() {
 	bzero(swaptable, SWAP_SIZE);
 }
 
+int swap_sweep(pid_t pid){
+	int count = 0;
+	lock_acquire(swap_lock);
+		for (int i = 0; i < SWAP_SIZE; i++){
+			if (swaptable[i].pid != pid) continue;
+			bzero(&swaptable[i], sizeof(struct swap_entry));
+			count++;
+		}
+	lock_release(swap_lock);
+	return count;
+}
 
 int swapfile_init()
 {
@@ -63,6 +74,8 @@ int swap_to_disk (struct page_entry *pe)
 	int offset;
 	bool full = true;
 	int result = 0;
+
+kprintf("Swap OUT\n");
 
 	lock_acquire(swap_lock);
 	pe->swapped = true;
@@ -94,10 +107,12 @@ END_OF_SWAP_TO_DISK:
 
 int swap_to_mem (struct page_entry *pe, int apfn)
 {
-	lock_acquire(swap_lock);
-	pe->swapped = false;
 	struct iovec iov;
 	struct uio ku;
+kprintf("Swap BACK\n");
+
+	lock_acquire(swap_lock);
+	pe->swapped = false;
 	int offset = pe->swap_index * PAGE_SIZE;
 	paddr_t pa = apfn * PAGE_SIZE;
 	uio_kinit(&iov, &ku, (void *)PADDR_TO_KVADDR(pa), PAGE_SIZE, offset, UIO_READ);

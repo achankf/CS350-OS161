@@ -141,10 +141,9 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 		ret = core_kickvictim(frame);
 		if(ret) goto UFRAME_ALLOC1_FINISH;
 		set_frame(*frame, USER, pid, id);
-		ret = 0;
+		ZERO_OUT_FRAME(*frame);
 		goto UFRAME_ALLOC1_FINISH;
 	}
-
 	
 	// start search from the MIDDLE of the coremap
 	int idx = num_frames >> 1;
@@ -153,13 +152,13 @@ uframe_alloc1(int *frame, pid_t pid, int id)
 			set_frame(idx, USER, pid, id);
 			*frame = idx;
 			ret = 0;
+			ZERO_OUT_FRAME(*frame);
 			break;
 		}
 		idx = (idx + 1) % num_frames;
 	}
 UFRAME_ALLOC1_FINISH:
 	lock_release(coremap_lock);
-	ZERO_OUT_FRAME(*frame);
 	DEBUG(DB_VM,"Finished uframe_alloc1 retval:%d\n", ret);
 	return ret;
 }
@@ -210,20 +209,6 @@ int kframe_alloc(int *frame, int frames_wanted)
 				id = id_cur++;
 			}
 	}
-			int need_to_free = frames_wanted - coremap_has_space();
-			if(need_to_free > 0) {
-				for(int i = 0; i < need_to_free; i++) {
-					int victim = coremap_get_rr_victim();
-					struct page_entry *pe;
-					int result = get_page_entry_victim(&pe, victim);
-					if(result) {
-						lock_release(coremap_lock);
-						return result;
-					}
-					swap_to_disk(pe);
-				}
-			}
-
 			rv = frame_alloc_continuous(frame, KERNEL, 0, id, frames_wanted);
 			if (rv && id_not_used != NULL) {
 				q_addtail(id_not_used, (void*)id);

@@ -50,17 +50,12 @@ main()
 {
 	int i,j;
 
-int k =0;
 	printf("Entering the huge program - I will stress test your VM\n");
 
 	/* move number in so that sparse[i][0]=i */
 	for (i=0; i<NumPages; i++) {
 		sparse[i][0]=i;
-printf("%4d ", sparse[i][0]++);
-k = (k+1)% 8;
-if (k == 0) printf("\n");
 	}
-printf("\n");
 	
 	printf("stage [1] done\n");
 	

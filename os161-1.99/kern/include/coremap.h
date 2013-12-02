@@ -1,8 +1,5 @@
-
 #ifndef _COREMAP_H_
 #define _COREMAP_H_
-
-#include <coremap.h>
 
 struct segment;
 struct page_entry;

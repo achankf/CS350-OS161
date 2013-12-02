@@ -264,19 +264,14 @@ int coremap_has_space()
 	
 int coremap_get_rr_victim()
 {
-        int victim;
-        static unsigned int next_victim = 0;
+	int victim;
+	static unsigned int next_victim = 0;
 
 	bool full = true;
-        while(true)
-        {
-                if(coremap_ptr[next_victim].status == USER)
-                {
+	while(true) {
+		if(coremap_ptr[next_victim].status == USER) {
 			victim = next_victim;
-			coremap_ptr[next_victim].status = UNALLOCATED;
-			coremap_ptr[next_victim].pid = 0;
-			coremap_ptr[next_victim].id = 0;
-                        next_victim = (next_victim + 1) % num_frames;
+			next_victim = (next_victim + 1) % num_frames;
 			full = false;
 			break;
 		}
@@ -312,9 +307,7 @@ int core_kickvictim(int *ret)
 {
 	int victim = coremap_get_rr_victim();
 	struct page_entry *pe;
-	//kprintf("full, victim is %d\n", victim);
 	int result = get_page_entry_victim(&pe, victim);
-	//kprintf("back from page_entry %p, result = %d\n", pe, result);
 	if(result)
 	{
 		return result;

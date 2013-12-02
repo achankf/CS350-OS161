@@ -63,6 +63,7 @@ int swap_to_disk (struct page_entry *pe)
 	lock_acquire(swap_lock);
 	pe->swapped = true;
 	paddr_t pa = pe->pfn * PAGE_SIZE;
+	pe->pfn = -1;
 	struct iovec iov;
 	struct uio ku;
 	int offset;
@@ -93,6 +94,7 @@ int swap_to_disk (struct page_entry *pe)
 END_OF_SWAP_TO_DISK:
 	lock_release(swap_lock);
 	return result;
+
 }
 
 int swap_to_mem (struct page_entry *pe, int apfn)
